@@ -1,8 +1,8 @@
-import selenium, time, datetime
-from selenium.common.exceptions import NoSuchElementException, WebDriverException, TimeoutException
+import selenium
+from selenium.common.exceptions import NoSuchElementException, WebDriverException, TimeoutException, ElementNotInteractableException
 from selenium.webdriver.common.by import By
 from selenium.webdriver import ActionChains
-import random, asyncio
+import asyncio
 
 # traditional : cnbc, bbc, reuters, (bloomberg, wsj)
 # categories for lunch : world, tech, economy, environment, energy, politic
@@ -30,21 +30,21 @@ class Crawler:
         }
 
     def get_link_dict(self, site:str):
-        with open(f"/Users/s/Desktop/Study/Toyproject/Newsquids/Crawler/files/{site}/links.txt","r") as f:
+        with open(f"/Users/s/Desktop/Study/Toyproject/Newsquids/Backend/crawler/files/{site}/links.txt","r") as f:
             read_file = f.read()
         return eval(read_file)
 
     def update_link_dict(self, site:str, data:str):
-        with open(f"/Users/s/Desktop/Study/Toyproject/Newsquids/Crawler/files/{site}/links.txt","w") as f:
+        with open(f"/Users/s/Desktop/Study/Toyproject/Newsquids/Backend/crawler/files/{site}/links.txt","w") as f:
             f.write(data)
         return
     
     def log_error(self, site:str, failed_link:str):
-        with open(f"/Users/s/Desktop/Study/Toyproject/Newsquids/Crawler/files/{site}/errors.txt","r") as f:
+        with open(f"/Users/s/Desktop/Study/Toyproject/Newsquids/Backend/crawler/files/{site}/errors.txt","r") as f:
             read_file = f.read()
         tem = eval(read_file)
         tem.append(failed_link)
-        with open(f"/Users/s/Desktop/Study/Toyproject/Newsquids/Crawler/files/{site}/errors.txt","w") as f:
+        with open(f"/Users/s/Desktop/Study/Toyproject/Newsquids/Backend/crawler/files/{site}/errors.txt","w") as f:
             f.write(str(tem))
         return
 
@@ -174,22 +174,78 @@ async def crawling_sites(site:str):
                     crawler.log_error(site=site, failed_link=link)
                     continue
         elif site == "coindesk":
+            link_dict = crawler.get_link_dict(site=site)
+            web.execute_script("window.scrollTo(0, document.body.scrollHeight);")
+            await asyncio.sleep(5)
+            boxes = web.find_elements(By.CLASS_NAME,"WDSwd")
+            action = ActionChains(web)
+            for box in boxes:
+                try:
+                    btn = web.find_element(By.ID,"CybotCookiebotDialogBodyButtonAccept")
+                    action.click(btn)
+                    action.perform()
+                    await asyncio.sleep(2)
+                except NoSuchElementException:
+                    pass
+                except ElementNotInteractableException:
+                    pass
+                link = box.get_attribute("href")
+                try:
+                    link_dict[link]
+                    print("이미 존재하는 주소입니다.")
+                    continue
+                except KeyError:
+                    print(f"{site}의 {link} 크롤링 중...")
+                    await asyncio.sleep(2.6)
+                    tem_web.get(link)
+                    headline = tem_web.find_element(By.TAG_NAME, "h1").text
+                    if headline in ['Opinion','NFTs']:
+                        headline = tem_web.find_element(By.CLASS_NAME,"at-headline").find_element(By.TAG_NAME,'h1').text
+                    image = box.find_element(By.TAG_NAME,"img").get_attribute("src")
+                    try:
+                        pub_time = tem_web.find_element(By.CLASS_NAME,"at-created").find_element(By.TAG_NAME,"span").text
+                    except NoSuchElementException:
+                        pub_time = tem_web.find_element(By.CLASS_NAME, "fUOSEs").text
+                    tem_contexts = []
+                    contexts = tem_web.find_elements(By.CLASS_NAME,'at-text')
+                    for context in contexts:
+                        tem_contexts.append(context.text)
+                    link_dict[link] = [headline,image,pub_time,tem_contexts]
+                    crawler.update_link_dict(site=site, data=str(link_dict))
+                    print(f"{site}의 {link} 크롤링 완료")
+                except TimeoutException:
+                    print(f'{link}에서 에러가 발생했습니다')
+                    crawler.log_error(site=site, failed_link=link)
+                    continue
+        elif site == "cointelegraph":
+            link_dict = crawler.get_link_dict(site=site)
+            await asyncio.sleep(3)
+            web.execute_script("window.scrollTo(0, document.body.scrollHeight);")
+            await asyncio.sleep(2)
+            boxes = web.find_elements(By.CLASS_NAME,"posts-listing__item")
+            action = ActionChains(web)
+            for box in boxes:
+                link = box.find_element(By.TAG_NAME, "a").get_attribute("href")
+                try:
+                    link_dict[link]
+                    print("이미 존재하는 주소입니다.")
+                    continue
+                except KeyError:
+                    print(f"{site}의 {link} 크롤링 중...")
+                    await asyncio.sleep(2.6)
+                    headline = box.find_element(By.CLASS_NAME, "post-card-inline__title").text
+                    image = box.find_element(By.TAG_NAME, "img").get_attribute("src")
+                    pub_time = box.find_element(By.TAG_NAME, "time").get_attribute("datetime")
+                    link_dict[link] = [headline,image,pub_time,[]]
+                    crawler.update_link_dict(site=site, data=str(link_dict))
+                    print(f"{site}의 {link} 크롤링 완료")
+                except TimeoutException or WebDriverException:
+                    print(f'{link}에서 에러가 발생했습니다')
+                    crawler.log_error(site=site, failed_link=link)
+                    continue
+        elif site == "cryptoslate":
             1
     print(f'{site}의 크롤링 완료')
     return
 
-year = datetime.datetime.now().year
-month = datetime.datetime.now().month
-day = datetime.datetime.now().day
-
-
-# for site in crypto_sites:
-#     base_url = f"https://www.{site}.com"
-#     for category in sites_categories[site]:
-#         url = base_url + f"/{category}"
-#         time.sleep(1)
-#         web.get(url)
-#         time.sleep(3)
-#     break
-
-asyncio.run(crawling_sites("coindesk"))
+asyncio.run(crawling_sites("cointelegraph"))
