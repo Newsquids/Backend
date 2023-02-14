@@ -2,6 +2,7 @@ import selenium
 from selenium.common.exceptions import NoSuchElementException, WebDriverException, TimeoutException, ElementNotInteractableException
 from selenium.webdriver.common.by import By
 from selenium.webdriver import ActionChains
+from datetime import datetime
 import asyncio
 
 # traditional : cnbc, bbc, reuters, (bloomberg, wsj)
@@ -114,7 +115,11 @@ async def crawling_sites(site:str):
                     headline = box.find_element(By.TAG_NAME,'h3').text
                     link_dict[link] = [headline]
                     print(f"{site}의 {link} 크롤링 중...")
-                    tem_web.get(link)
+                    try:
+                        tem_web.get(link)
+                    except TimeoutException:
+                        print(f"{site}의 {link} 크롤링 실패")
+                        continue
                     tem_web.execute_script("window.scrollTo(0, document.body.scrollHeight);")
                     await asyncio.sleep(2.4)
                     try:
@@ -134,10 +139,10 @@ async def crawling_sites(site:str):
                     link_dict[link].append(tem_contexts)
                     crawler.update_link_dict(site=site, data=str(link_dict))
                     print(f"{site}의 {link} 크롤링 완료")
+                    await asyncio.sleep(3.2)
                 except WebDriverException:
                     crawler.log_error(site=site, failed_link=link)
                     print(f'{link} 크롤링 중 에러 발생')
-                await asyncio.sleep(3.5)
         elif site == 'reuters':
             await asyncio.sleep(3)
             link_dict = crawler.get_link_dict(site=site)
@@ -244,8 +249,43 @@ async def crawling_sites(site:str):
                     crawler.log_error(site=site, failed_link=link)
                     continue
         elif site == "cryptoslate":
-            1
+            link_dict = crawler.get_link_dict(site=site)
+            await asyncio.sleep(2)
+            web.execute_script("window.scrollTo(0, document.body.scrollHeight);")
+            await asyncio.sleep(2)
+            body = web.find_element(By.CLASS_NAME, "news-feed")
+            boxes = body.find_elements(By.TAG_NAME,"article")
+            action = ActionChains(web)
+            for box in boxes:
+                link_element = box.find_element(By.TAG_NAME, "a")
+                link = link_element.get_attribute("href")
+                action.move_to_element(link_element)
+                try:
+                    link_dict[link]
+                    print("이미 존재하는 주소입니다.")
+                    continue
+                except KeyError:
+                    print(f"{site}의 {link} 크롤링 중...")
+                    action.perform()
+                    await asyncio.sleep(2)
+                    headline = box.find_element(By.TAG_NAME, "h2").text
+                    image = box.find_element(By.TAG_NAME, "img").get_attribute("src")
+                    pub_time = f'{box.find_element(By.CLASS_NAME, "read").text}, {datetime.now()}'
+                    link_dict[link] = [headline,image,pub_time,[]]
+                    crawler.update_link_dict(site=site, data=str(link_dict))
+                    print(f"{site}의 {link} 크롤링 완료")
+                except TimeoutException or WebDriverException:
+                    print(f'{link}에서 에러가 발생했습니다')
+                    crawler.log_error(site=site, failed_link=link)
+                    continue
+            await asyncio.sleep(2.6)
     print(f'{site}의 크롤링 완료')
     return
 
-asyncio.run(crawling_sites("cointelegraph"))
+asyncio.run(crawling_sites("cryptoslate"))
+# for site in crawler.crypto_sites:
+# for site in crawler.traditional_sites:
+#     try:
+#         asyncio.run(crawling_sites(site))
+#     except TimeoutException:
+#         continue
