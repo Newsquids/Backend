@@ -46,7 +46,8 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
-    "user"
+    "user",
+    "crawler"
 ]
 
 MIDDLEWARE = [
@@ -113,7 +114,7 @@ AUTH_PASSWORD_VALIDATORS = [
 # Internationalization
 # https://docs.djangoproject.com/en/4.1/topics/i18n/
 
-LANGUAGE_CODE = "en-us"
+LANGUAGE_CODE = "ko-kr"
 
 TIME_ZONE = "UTC"
 
@@ -135,3 +136,18 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 # Using User Model
 
 AUTH_USER_MODEL = 'user.User'
+
+# CELERY setting
+
+# CELERY_RESULT_BACKEND = 'django-db'
+
+# BROKER setting
+
+# Admin's Gmail setting
+
+EMAIL_BACKEND = 'django_celery_beat.schedulers:DatabaseScheduler'
+EMAIL_HOST = get_secret("EMAIL_HOST")
+EMAIL_HOST_USER = get_secret("EMAIL_HOST_USER")
+EMAIL_HOST_PASSWORD = get_secret("EMAIL_HOST_PASSWORD")
+EMAIL_USE_TLS = True
+EMAIL_PORT = 587
