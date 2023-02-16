@@ -141,6 +141,8 @@ AUTH_USER_MODEL = 'user.User'
 
 # CELERY_RESULT_BACKEND = 'django-db'
 
+# BROKER setting
+
 # Admin's Gmail setting
 
 EMAIL_BACKEND = 'django_celery_beat.schedulers:DatabaseScheduler'

@@ -4,6 +4,7 @@ from selenium.common.exceptions import NoSuchElementException, WebDriverExceptio
 from selenium.webdriver.common.by import By
 from selenium.webdriver import ActionChains
 from datetime import datetime
+from webdriver_manager.chrome import ChromeDriverManager
 import asyncio
 # traditional : cnbc, bbc, reuters, (bloomberg, wsj)
 # categories for lunch : world, tech, economy, environment, energy, politic
@@ -50,9 +51,16 @@ class Crawl:
             f.write(str(tem))
         return
 
+    def get_data_or_None(self, data):
+        try:
+            obj = data
+        except NoSuchElementException:
+            obj = None
+        return obj
+
     async def crawling_sites(self, site:str):
-        web = selenium.webdriver.Chrome()
-        tem_web = selenium.webdriver.Chrome()
+        web = selenium.webdriver.Chrome(ChromeDriverManager().install())
+        tem_web = selenium.webdriver.Chrome(ChromeDriverManager().install())
         base_url = f"https://www.{site}.com"
         for category in self.sites_categories[site]:
             print(f'{site} : {category} 크롤링을 시작합니다.')
@@ -123,7 +131,7 @@ class Crawl:
                         try:
                             image = tem_web.find_element(By.TAG_NAME, "img").get_attribute('src')
                         except NoSuchElementException:
-                            image = ''
+                            image = None
                         try:
                             pub_time = tem_web.find_element(By.TAG_NAME,'time').get_attribute("datetime")
                         except NoSuchElementException:
@@ -149,17 +157,15 @@ class Crawl:
                     try:
                         link_element = box.find_element(By.CLASS_NAME,"media-story-card__heading__eqhp9")
                         link = link_element.get_attribute('href')
-                        action = ActionChains(web)
-                        action.move_to_element(link_element)
-                        action.perform()
-                    except NoSuchElementException:
-                        continue
-                    try:
                         link_dict[link]
                         print("이미 존재하는 주소입니다.")
+                    except NoSuchElementException:
                         continue
                     except KeyError:
                         print(f"{site}의 {link} 크롤링 중...")
+                        action = ActionChains(web)
+                        action.move_to_element(link_element)
+                        action.perform()
                         tem_web.get(link)
                         headline = tem_web.find_element(By.TAG_NAME,"h1").text
                         pub_times = tem_web.find_element(By.TAG_NAME,"time").find_elements(By.TAG_NAME,'span')
@@ -200,10 +206,16 @@ class Crawl:
                         print(f"{site}의 {link} 크롤링 중...")
                         await asyncio.sleep(2.6)
                         tem_web.get(link)
-                        headline = tem_web.find_element(By.TAG_NAME, "h1").text
-                        if headline in ['Opinion','NFTs']:
-                            headline = tem_web.find_element(By.CLASS_NAME,"at-headline").find_element(By.TAG_NAME,'h1').text
-                        image = box.find_element(By.TAG_NAME,"img").get_attribute("src")
+                        try:
+                            headline = tem_web.find_element(By.TAG_NAME, "h1").text
+                            if len(headline) < 10:
+                                headline = tem_web.find_element(By.CLASS_NAME,"at-headline").find_element(By.TAG_NAME,'h1').text
+                        except NoSuchElementException:
+                            continue
+                        try:
+                            image = box.find_element(By.TAG_NAME,"img").get_attribute("src")
+                        except NoSuchElementException:
+                            image = None
                         try:
                             pub_time = tem_web.find_element(By.CLASS_NAME,"at-created").find_element(By.TAG_NAME,"span").text
                         except NoSuchElementException:
@@ -286,12 +298,10 @@ class Crawl:
         return
 
 # crawler = Crawl()
-
 # sites = crawler.all_sites
 # crawling = crawler.crawling_sites
 
-
-# for site in sites:
+# for site in sites[3:]:
 #     try:
 #         asyncio.run(crawling(site))
 #     except TimeoutException:
