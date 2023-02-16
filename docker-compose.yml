@@ -1,0 +1,41 @@
+version: '3.8'
+
+services:
+  django:
+    build: .
+    container_name: django
+    command: python manage.py runserver 0.0.0.0:8000
+    volumes:
+      - .:/usr/src/app/
+    ports:
+      - "8000:8000"
+    environment:
+      - DEBUG=1
+      - DJANGO_ALLOWED_HOSTS=localhost 127.0.0.1
+    depends_on:
+      - rabbitmq
+  celery:
+    build: .
+    container_name: celery-worker
+    command: celery -b rabbitmq -A config worker -l info
+    volumes:
+      - .:/usr/src/app/
+    depends_on:
+      - django
+      - rabbitmq
+  celery-beat:
+    build: .
+    container_name: celery-beat
+    command: celery -b rabbitmq -A config beat -l info
+    volumes:
+      - .:/usr/src/app/
+    depends_on:
+      - django
+      - rabbitmq
+  rabbitmq:
+    image: rabbitmq
+    container_name: rabbitmq
+    command: rabbitmq-server
+    ports:
+      - "5672:5672"
+      - "15672:15672"
