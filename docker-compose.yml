@@ -14,6 +14,7 @@ services:
       - DJANGO_ALLOWED_HOSTS=localhost 127.0.0.1
     depends_on:
       - rabbitmq
+      - pgdb
   celery:
     build: .
     container_name: celery-worker
@@ -39,3 +40,13 @@ services:
     ports:
       - "5672:5672"
       - "15672:15672"
+  pgdb:
+    image: postgres
+    container_name: "pgdb"
+    environment:
+      - DJANGO_ALLOWED_HOSTS=localhost 127.0.0.1
+      - POSTGRES_DB=postgres
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+    volumes:
+      - pgdata:/var/lib/postgresql/data/

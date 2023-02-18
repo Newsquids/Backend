@@ -2,7 +2,7 @@
 import selenium
 from selenium.common.exceptions import NoSuchElementException, WebDriverException, TimeoutException, ElementNotInteractableException
 from selenium.webdriver.common.by import By
-from selenium.webdriver import ActionChains
+from selenium.webdriver import ActionChains, ChromeOptions
 from datetime import datetime
 from webdriver_manager.chrome import ChromeDriverManager
 import asyncio
@@ -59,8 +59,10 @@ class Crawl:
         return obj
 
     async def crawling_sites(self, site:str):
-        web = selenium.webdriver.Chrome(ChromeDriverManager().install())
-        tem_web = selenium.webdriver.Chrome(ChromeDriverManager().install())
+        ops = ChromeOptions()
+        ops.add_argument("headless")
+        web = selenium.webdriver.Chrome(ChromeDriverManager().install(), options=ops)
+        tem_web = selenium.webdriver.Chrome(ChromeDriverManager().install(), options=ops)
         base_url = f"https://www.{site}.com"
         for category in self.sites_categories[site]:
             print(f'{site} : {category} 크롤링을 시작합니다.')
@@ -167,7 +169,12 @@ class Crawl:
                         action.move_to_element(link_element)
                         action.perform()
                         tem_web.get(link)
-                        headline = tem_web.find_element(By.TAG_NAME,"h1").text
+                        await asyncio.sleep(2)
+                        try:
+                            headline = tem_web.find_element(By.TAG_NAME,"h1").text
+                        except NoSuchElementException:
+                            print(f'{site}의 {link}에서 에러가 발생했습니다')
+                            continue
                         pub_times = tem_web.find_element(By.TAG_NAME,"time").find_elements(By.TAG_NAME,'span')
                         pub_time = pub_times[1].text + pub_times[2].text
                         try:
@@ -294,15 +301,18 @@ class Crawl:
                         self.log_error(site=site, failed_link=link)
                         continue
                 await asyncio.sleep(2.6)
+        web.quit()
+        tem_web.quit()
         print(f'{site}의 크롤링 완료')
         return
 
-# crawler = Crawl()
-# sites = crawler.all_sites
-# crawling = crawler.crawling_sites
+async def main ():
+    crawler = Crawl()
+    sites = crawler.all_sites
+    await asyncio.gather(*[crawler.crawling_sites(site) for site in sites])
+    return
 
-# for site in sites[3:]:
-#     try:
-#         asyncio.run(crawling(site))
-#     except TimeoutException:
-#         continue
+start = datetime.now()
+print(f'{start} 크롤링 시작')
+asyncio.run(main())
+print(f'{datetime.now()} 크롤링 종료')
