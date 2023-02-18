@@ -7,7 +7,7 @@ while number > 9:
 
 
 if number < 7:
-    with open(f'/Users/s/Desktop/Study/Toyproject/Newsquids/Backend/crawler/files/{sites[number-1]}/links.txt', 'r') as f:
+    with open(f'/Users/s/Desktop/Study/Toyproject/Newsquids/Backend/crawler/files/{sites[number-1]}/new_link.txt', 'r') as f:
         x = f.read()
     x = eval(x)
     d_keys = list(x.keys())
@@ -15,7 +15,7 @@ if number < 7:
 elif number == 7:
     key_number = 0
     for n in range(3):
-        with open(f'/Users/s/Desktop/Study/Toyproject/Newsquids/Backend/crawler/files/{sites[n]}/links.txt', 'r') as f:
+        with open(f'/Users/s/Desktop/Study/Toyproject/Newsquids/Backend/crawler/files/{sites[n]}/new_link.txt', 'r') as f:
             x = f.read()
         x = eval(x)
         d_keys = list(x.keys())
@@ -24,7 +24,7 @@ elif number == 7:
 elif number == 8:
     key_number = 0
     for n in range(3,6):
-        with open(f'/Users/s/Desktop/Study/Toyproject/Newsquids/Backend/crawler/files/{sites[n]}/links.txt', 'r') as f:
+        with open(f'/Users/s/Desktop/Study/Toyproject/Newsquids/Backend/crawler/files/{sites[n]}/new_link.txt', 'r') as f:
             x = f.read()
         x = eval(x)
         d_keys = list(x.keys())
@@ -33,7 +33,7 @@ elif number == 8:
 elif number == 9:
     key_number = 0
     for n in range(6):
-        with open(f'/Users/s/Desktop/Study/Toyproject/Newsquids/Backend/crawler/files/{sites[n]}/links.txt', 'r') as f:
+        with open(f'/Users/s/Desktop/Study/Toyproject/Newsquids/Backend/crawler/files/{sites[n]}/new_link.txt', 'r') as f:
             x = f.read()
         x = eval(x)
         d_keys = list(x.keys())

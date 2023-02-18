@@ -8,6 +8,17 @@ with open(f'/Users/s/Desktop/Study/Toyproject/Newsquids/Backend/crawler/files/{s
 data = eval(x)
 data_keys = list(data.keys())
 tem_key = data_keys[5]
-print(data[tem_key][0])
-print(data[tem_key][1])
-print(data[tem_key][2])
+# print(data[tem_key][0])
+# print(data[tem_key][1])
+# print(data[tem_key][2])
+ml = 0
+for key in data_keys:
+    tem = data[key][0]
+    if tem != None:
+        if ml < len(tem):
+            ml = len(tem)
+        if len(tem) < 10:
+            print(tem)
+            print(key)
+
+print(ml)
