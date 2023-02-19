@@ -11,6 +11,7 @@ services:
       - "8000:8000"
     environment:
       - DEBUG=1
+      - DJANGO_SECRET_KEY=${DJANGO_SECRET_KEY}
       - DJANGO_ALLOWED_HOSTS=localhost 127.0.0.1
     depends_on:
       - rabbitmq
@@ -19,6 +20,8 @@ services:
     build: .
     container_name: celery-worker
     command: celery -b rabbitmq -A config worker -l info
+    environment:
+      - DJANGO_SECRET_KEY=${DJANGO_SECRET_KEY}
     volumes:
       - .:/usr/src/app/
     depends_on:
@@ -28,9 +31,12 @@ services:
     build: .
     container_name: celery-beat
     command: celery -b rabbitmq -A config beat -l info
+    environment:
+      - DJANGO_SECRET_KEY=${DJANGO_SECRET_KEY}
     volumes:
       - .:/usr/src/app/
     depends_on:
+      - celery
       - django
       - rabbitmq
   rabbitmq:
@@ -43,10 +49,12 @@ services:
   pgdb:
     image: postgres
     container_name: "pgdb"
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./postgresql/data:/var/lib/postgresql/data
     environment:
       - DJANGO_ALLOWED_HOSTS=localhost 127.0.0.1
       - POSTGRES_DB=postgres
       - POSTGRES_USER=postgres
       - POSTGRES_PASSWORD=postgres
-    volumes:
-      - pgdata:/var/lib/postgresql/data/

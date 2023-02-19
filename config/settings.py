@@ -11,30 +11,22 @@ https://docs.djangoproject.com/en/4.1/ref/settings/
 """
 
 from pathlib import Path
-import os, json
+import os
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-
-def get_secret(setting):
-    return secrets[setting]
     
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/4.1/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-secret_file = os.path.join(BASE_DIR, 'secrets.json')
 
-with open(secret_file) as f:
-    secrets = json.loads(f.read())
-    
-
-SECRET_KEY = get_secret("DJANGO_SECRET_KEY")
+SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY")
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ["*"]
 
 
 # Application definition
@@ -87,8 +79,12 @@ WSGI_APPLICATION = "config.wsgi.application"
 
 DATABASES = {
     "default": {
-        "ENGINE": "django.db.backends.sqlite3",
-        "NAME": BASE_DIR / "db.sqlite3",
+        "ENGINE": "django.db.backends.postgresql",
+        "NAME": "postgres",
+        "USER": "postgres",
+        "PASSWORD": "postgres",
+        "HOST": "pgdb",
+        "PORT": 5432,
     }
 }
 
@@ -146,9 +142,9 @@ AUTH_USER_MODEL = 'user.User'
 
 # Admin's Gmail setting
 
-EMAIL_BACKEND = 'django_celery_beat.schedulers:DatabaseScheduler'
-EMAIL_HOST = get_secret("EMAIL_HOST")
-EMAIL_HOST_USER = get_secret("EMAIL_HOST_USER")
-EMAIL_HOST_PASSWORD = get_secret("EMAIL_HOST_PASSWORD")
-EMAIL_USE_TLS = True
-EMAIL_PORT = 587
+# EMAIL_BACKEND = 'django_celery_beat.schedulers:DatabaseScheduler'
+# EMAIL_HOST = get_secret("EMAIL_HOST")
+# EMAIL_HOST_USER = get_secret("EMAIL_HOST_USER")
+# EMAIL_HOST_PASSWORD = get_secret("EMAIL_HOST_PASSWORD")
+# EMAIL_USE_TLS = True
+# EMAIL_PORT = 587
