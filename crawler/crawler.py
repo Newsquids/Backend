@@ -2,7 +2,7 @@
 import selenium
 from selenium.common.exceptions import NoSuchElementException, WebDriverException, TimeoutException, ElementNotInteractableException, NoSuchAttributeException
 from selenium.webdriver.common.by import By
-from selenium.webdriver import ActionChains, ChromeOptions
+from selenium.webdriver import ActionChains, ChromeOptions, Chrome
 from datetime import datetime, timedelta
 from webdriver_manager.chrome import ChromeDriverManager
 import asyncio
@@ -66,7 +66,7 @@ class Crawl:
             obj = None
         return obj
 
-    def preprocess_time(self, site:str, link:str, time:str ):
+    def preprocess_time(self, site:str, link:str, time:str):
         if time == None or len(time) < 10:
             return 0
         try:
@@ -157,8 +157,9 @@ class Crawl:
     async def crawling_sites(self, site:str):
         ops = ChromeOptions()
         ops.add_argument("headless")
-        web = selenium.webdriver.Chrome(ChromeDriverManager().install(), options=ops)
-        tem_web = selenium.webdriver.Chrome(ChromeDriverManager().install(), options=ops)
+        web = Chrome(ChromeDriverManager().install(), options=ops)
+        tem_web = Chrome(ChromeDriverManager().install(), options=ops)
+        tem_web.set_page_load_timeout(30)
         base_url = f"https://www.{site}.com"
         for category in self.sites_categories[site]:
             print(f'{site} : {category} 크롤링을 시작합니다.')
@@ -261,11 +262,11 @@ class Crawl:
                         action = ActionChains(web)
                         action.move_to_element(link_element)
                         action.perform()
+                        await asyncio.sleep(2)
                         try:
                             tem_web.get(link)
                         except TimeoutException:
                             continue
-                        await asyncio.sleep(2)
                         try:
                             headline = tem_web.find_element(By.TAG_NAME,"h1").text
                         except NoSuchElementException:
@@ -437,11 +438,5 @@ class Crawl:
 async def main ():
     crawler = Crawl()
     sites = crawler.all_sites
-    sites = sites[4:]
     await asyncio.gather(*[crawler.crawling_sites(site) for site in sites])
     return
-
-start = datetime.now()
-asyncio.run(main())
-print(f'{start} 크롤링 시작')
-print(f'{datetime.now()} 크롤링 종료')
