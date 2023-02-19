@@ -440,3 +440,9 @@ async def main ():
     sites = crawler.all_sites
     await asyncio.gather(*[crawler.crawling_sites(site) for site in sites])
     return
+
+if __name__=='__main__':
+    start = datetime.now()
+    asyncio.run(main())
+    print(f'{start} 크롤링 시작')
+    print(f'{datetime.now()} 크롤링 종료')

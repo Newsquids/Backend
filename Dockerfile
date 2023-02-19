@@ -10,4 +10,5 @@ COPY requirements.txt ./
 # RUN wget -O /tmp/chromedriver.zip http://chromedriver.storage.googleapis.com/` curl -sS chromedriver.storage.googleapis.com/LATEST_RELEASE`/chromedriver_linux64.zip
 # RUN mkdir chrome
 # RUN unzip /tmp/chromedriver.zip chromedriver -d /usr/src/chromß
+RUN pip uninstall psycopg2
 RUN pip install -r requirements.txt
