@@ -1,6 +1,6 @@
 from ninja import Schema
 from datetime import datetime
-from typing import Optional
+from typing import Optional, List
 
 class NewsInSchema(Schema):
     channel : str
@@ -10,15 +10,24 @@ class NewsInSchema(Schema):
     create_time : datetime
     category : str
 
+class NewsListSchema(Schema):
+    newsId : int
+    newsOriginLink : str
+    newsChannel : str
+    newsImage : str
+    newsHeadline : str
+    newsCategory : str
+    newsDate : datetime
+    isBookmarked : bool = False
+
 class NewsOutSchema(Schema):
-    id : int
-    link : str
-    headline : str
-    image : str = None
-    create_time : datetime
+    newsItems : List[NewsListSchema]
 
 class NewsChannelSchema(Schema):
-    channel_name : str
+    channels : list
     
 class NewsCategorySchema(Schema):
-    category_name : str
+    categories : list
+
+class NewsEmail(Schema):
+    emails : list

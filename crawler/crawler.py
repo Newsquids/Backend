@@ -1,22 +1,11 @@
 
-import selenium
 from selenium.common.exceptions import NoSuchElementException, WebDriverException, TimeoutException, ElementNotInteractableException, NoSuchAttributeException
 from selenium.webdriver.common.by import By
 from selenium.webdriver import ActionChains, ChromeOptions, Chrome
 from datetime import datetime, timedelta
 from webdriver_manager.chrome import ChromeDriverManager
 import asyncio
-# traditional : cnbc, bbc, reuters, (bloomberg, wsj)
-# categories for lunch : world, tech, economy, environment, energy, politic
-# cnbc's categories : world-markets, economy, technology, finance, health-and-science, politics,
-# bbc's categories : world, business, technology, science_and_environment 
-# reuters's categories : world, business, legal, markets
 
-# crypto : coindesk, cointelegraph, cryptoslate
-# categories for lunch : 
-# coindesk's categories : markets, business, policy, tech, web3
-# cointelegraph's categories : tags/defi, /nft, /regulation, /bitcoin, /ethereum, /altcoin, /business
-# cryptoslate's categories : regulation, cbdcs, bankruptcy, analysis, defi, nfts, partnerships, exchanges, /news/bitcoin, /ethereum
 
 class Crawl:
     def __init__(self) -> None:
@@ -29,7 +18,18 @@ class Crawl:
             "reuters" : ["world", "business", "legal", "markets"],
             "coindesk" : ["markets", "business", "policy", "tech", "web3"],
             "cointelegraph" : ["tags/defi", "tags/nft", "tags/regulation", "tags/bitcoin", "tags/ethereum", "tags/altcoin", "tags/business"],
-            "cryptoslate" : ["regulation", "cbdcs", "bankruptcy", "analysis", "defi", "nfts", "partnerships", "exchanges", "news/bitcoin", "news/ethereum"]
+            "cryptoslate" : ["crime", "regulation", "cbdcs", "bankruptcy", "analysis", "defi", "nfts", "partnerships", "exchanges", "news/bitcoin", "news/ethereum"]
+        }
+        # categories for traditional : world, business-economy, science-tech, politic 
+        # categories for crypto : crypto, regulation, business, defi, nft, web3, cbdc, crime-bankruptcy
+        self.db_category = {
+            "cnbc" : {"world-markets" : "world", "economy" : "business-economy", "technology" : "science-tech", "finance"  : "business-economy", "health-and-science" : "science-tech", "politics" : "politic"},
+            "bbc" : {"news/world" : "world", "news/business" : "business-economy", "news/technology" : "science-tech", "news/science_and_environment" : "science-tech", "news/health" : "science-tech" },
+            "reuters" : {"world" : "world", "business" : "business-economy", "legal" : "politic", "markets" : "world"},
+            "coindesk" : {"markets" : "crypto", "business" : "business", "policy" : "regulation", "tech" : "crypto", "web3" : "web3"},
+            "cointelegraph" : {"tags/defi" : "defi", "tags/nft" : "nft", "tags/regulation" : "regulation", "tags/bitcoin" : "crypto", "tags/ethereum" : "crypto", "tags/altcoin" : "crypto", "tags/business" : "business"},
+            "cryptoslate" : {"crime" : "crime-bankruptcy", "regulation" : "regulation", "cbdcs" : "cbdc", "bankruptcy" : "crime-bankruptcy", "analysis" : "crypto", "defi" : "defi", "nfts" : "nft", "partnerships" : "business", "exchanges" : "business", "news/bitcoin" : "crypto", "news/ethereum" : "crypto"}
+
         }
 
     def get_dict_or_data(self, site:str, dict:bool=False):
@@ -50,15 +50,6 @@ class Crawl:
                 f.write(data)
         return
     
-    def log_error(self, site:str, failed_link:str):
-        with open(f"/Users/s/Desktop/Study/Toyproject/Newsquids/Backend/crawler/files/{site}/errors.txt","r") as f:
-            read_file = f.read()
-        tem = eval(read_file)
-        tem.append(failed_link)
-        with open(f"/Users/s/Desktop/Study/Toyproject/Newsquids/Backend/crawler/files/{site}/errors.txt","w") as f:
-            f.write(str(tem))
-        return
-
     def get_data_or_None(self, data):
         try:
             obj = data
@@ -195,7 +186,8 @@ class Crawl:
                         time = self.preprocess_time(site=site,link=link,time=pub_time)
                         if not time:
                             continue
-                        data.append([link,headline,image,time])
+                        cat = self.db_category[site][category]
+                        data.append([link,headline,image,time,cat])
                         self.update_dict_or_data(site=site, data=str(link_dict), dict=True)
                         self.update_dict_or_data(site=site, data=str(data))
                         print(f"{site}의 {link} 크롤링 완료")
@@ -235,15 +227,15 @@ class Crawl:
                         time = self.preprocess_time(site=site,link=link,time=pub_time)
                         if not time:
                             continue
-                        data.append([link,headline,image,time])
+                        cat = self.db_category[site][category]
+                        data.append([link,headline,image,time,cat])
                         link_dict[link] = 1
                         self.update_dict_or_data(site=site, data=str(link_dict), dict=True)
                         self.update_dict_or_data(site=site, data=str(data))
                         print(f"{site}의 {link} 크롤링 완료")
                         await asyncio.sleep(3.2)
                     except WebDriverException:
-                        self.log_error(site=site, failed_link=link)
-                        print(f'{link} 크롤링 중 에러 발생')
+                        continue
             elif site == 'reuters':
                 await asyncio.sleep(2)
                 li_boxes = web.find_elements(By.CLASS_NAME,"story-card")
@@ -258,38 +250,38 @@ class Crawl:
                     except NoSuchElementException or NoSuchAttributeException:
                         continue
                     except KeyError:
-                        print(f"{site}의 {link} 크롤링 중...")
-                        action = ActionChains(web)
-                        action.move_to_element(link_element)
-                        action.perform()
-                        await asyncio.sleep(2)
                         try:
-                            tem_web.get(link)
+                            print(f"{site}의 {link} 크롤링 중...")
+                            action = ActionChains(web)
+                            action.move_to_element(link_element)
+                            action.perform()
+                            await asyncio.sleep(2)
+                            try:
+                                tem_web.get(link)
+                            except TimeoutException:
+                                continue
+                            try:
+                                headline = tem_web.find_element(By.TAG_NAME,"h1").text
+                            except NoSuchElementException:
+                                print(f'{site}의 {link}에서 에러가 발생했습니다')
+                                continue
+                            pub_times = tem_web.find_element(By.TAG_NAME,"time").find_elements(By.TAG_NAME,'span')
+                            pub_time = pub_times[1].text + pub_times[2].text
+                            time = self.preprocess_time(site=site,link=link,time=pub_time)
+                            if not time:
+                                continue
+                            try:
+                                image = box.find_element(By.TAG_NAME, "img").get_attribute('src')
+                            except NoSuchElementException or NoSuchAttributeException:
+                                image = None
+                            cat = self.db_category[site][category]
+                            data.append([link,headline,image,time,cat])
+                            link_dict[link] = 1
+                            self.update_dict_or_data(site=site, data=str(link_dict), dict=True)
+                            self.update_dict_or_data(site=site, data=str(data))
+                            print(f"{site}의 {link} 크롤링 완료")
                         except TimeoutException:
                             continue
-                        try:
-                            headline = tem_web.find_element(By.TAG_NAME,"h1").text
-                        except NoSuchElementException:
-                            print(f'{site}의 {link}에서 에러가 발생했습니다')
-                            continue
-                        pub_times = tem_web.find_element(By.TAG_NAME,"time").find_elements(By.TAG_NAME,'span')
-                        pub_time = pub_times[1].text + pub_times[2].text
-                        time = self.preprocess_time(site=site,link=link,time=pub_time)
-                        if not time:
-                            continue
-                        try:
-                            image = box.find_element(By.TAG_NAME, "img").get_attribute('src')
-                        except NoSuchElementException or NoSuchAttributeException:
-                            image = None
-                        data.append([link,headline,image,time])
-                        link_dict[link] = 1
-                        self.update_dict_or_data(site=site, data=str(link_dict), dict=True)
-                        self.update_dict_or_data(site=site, data=str(data))
-                        print(f"{site}의 {link} 크롤링 완료")
-                    except TimeoutException:
-                        print(f'{link}에서 에러가 발생했습니다')
-                        self.log_error(site=site, failed_link=link)
-                        continue
             elif site == "coindesk":
                 link_dict = self.get_dict_or_data(site=site, dict=True)
                 data = self.get_dict_or_data(site=site)
@@ -340,15 +332,12 @@ class Crawl:
                         time = self.preprocess_time(site=site,link=link,time=pub_time)
                         if not time:
                             continue
-                        data.append([link,headline,image,time])
+                        cat = self.db_category[site][category]
+                        data.append([link,headline,image,time,cat])
                         link_dict[link] = 1
                         self.update_dict_or_data(site=site, data=str(link_dict), dict=True)
                         self.update_dict_or_data(site=site, data=str(data))
                         print(f"{site}의 {link} 크롤링 완료")
-                    except TimeoutException:
-                        print(f'{link}에서 에러가 발생했습니다')
-                        self.log_error(site=site, failed_link=link)
-                        continue
             elif site == "cointelegraph":
                 link_dict = self.get_dict_or_data(site=site, dict=True)
                 data = self.get_dict_or_data(site=site)
@@ -378,14 +367,13 @@ class Crawl:
                         time = self.preprocess_time(site=site,link=link,time=pub_time)
                         if not time:
                             continue
-                        data.append([link,headline,image,time])
+                        cat = self.db_category[site][category]
+                        data.append([link,headline,image,time,cat])
                         link_dict[link] = 1
                         self.update_dict_or_data(site=site, data=str(link_dict), dict=True)
                         self.update_dict_or_data(site=site, data=str(data))
                         print(f"{site}의 {link} 크롤링 완료")
                     except TimeoutException or WebDriverException:
-                        print(f'{link}에서 에러가 발생했습니다')
-                        self.log_error(site=site, failed_link=link)
                         continue
             elif site == "cryptoslate":
                 link_dict = self.get_dict_or_data(site=site, dict=True)
@@ -420,14 +408,13 @@ class Crawl:
                         time = self.preprocess_time(site=site,link=link,time=pub_time)
                         if not time:
                             continue
-                        data.append([link,headline,image,time])
+                        cat = self.db_category[site][category]
+                        data.append([link,headline,image,time,cat])
                         link_dict[link] = 1
                         self.update_dict_or_data(site=site, data=str(link_dict), dict=True)
                         self.update_dict_or_data(site=site, data=str(data))
                         print(f"{site}의 {link} 크롤링 완료")
                     except TimeoutException or WebDriverException:
-                        print(f'{link}에서 에러가 발생했습니다')
-                        self.log_error(site=site, failed_link=link)
                         continue
                 await asyncio.sleep(2.6)
         web.quit()

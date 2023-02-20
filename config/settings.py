@@ -79,12 +79,14 @@ WSGI_APPLICATION = "config.wsgi.application"
 
 DATABASES = {
     "default": {
-        "ENGINE": "django.db.backends.postgresql",
-        "NAME": "postgres",
-        "USER": "postgres",
-        "PASSWORD": "postgres",
-        "HOST": "pgdb",
-        "PORT": 5432,
+        "ENGINE": "django.db.backends.sqlite3",
+        "NAME": BASE_DIR / "db.sqlite3",
+        # "ENGINE": "django.db.backends.postgresql",
+        # "NAME": "postgres",
+        # "USER": "postgres",
+        # "PASSWORD": "postgres",
+        # "HOST": "pgdb",
+        # "PORT": 5432,
     }
 }
 
@@ -143,8 +145,10 @@ AUTH_USER_MODEL = 'user.User'
 # Admin's Gmail setting
 
 # EMAIL_BACKEND = 'django_celery_beat.schedulers:DatabaseScheduler'
-# EMAIL_HOST = get_secret("EMAIL_HOST")
-# EMAIL_HOST_USER = get_secret("EMAIL_HOST_USER")
-# EMAIL_HOST_PASSWORD = get_secret("EMAIL_HOST_PASSWORD")
-# EMAIL_USE_TLS = True
-# EMAIL_PORT = 587
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = 'smtp.gmail.com'
+EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER")
+EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD")
+EMAIL_USE_TLS = True
+EMAIL_PORT = 587
+DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
