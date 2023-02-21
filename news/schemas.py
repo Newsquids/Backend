@@ -14,7 +14,7 @@ class NewsListSchema(Schema):
     newsId : int
     newsOriginLink : str
     newsChannel : str
-    newsImage : str
+    newsImage : str = None
     newsHeadline : str
     newsCategory : str
     newsDate : datetime

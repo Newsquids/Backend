@@ -8,6 +8,7 @@ services:
       - bash
       - -c
       - |
+        python manage.py makemigrations user news
         python manage.py migrate
         python manage.py runserver 0.0.0.0:8000
     volumes:
@@ -26,6 +27,7 @@ services:
     command: celery -b rabbitmq -A config worker -l info
     environment:
       - DJANGO_SECRET_KEY=${DJANGO_SECRET_KEY}
+      - CELERY_BROKER_URL='amqp://localhost'
     volumes:
       - .:/usr/src/app/
     depends_on:
@@ -37,6 +39,7 @@ services:
     command: celery -b rabbitmq -A config beat -l info
     environment:
       - DJANGO_SECRET_KEY=${DJANGO_SECRET_KEY}
+      - CELERY_BROKER_URL='amqp://localhost'
     volumes:
       - .:/usr/src/app/
     depends_on:

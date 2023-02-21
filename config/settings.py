@@ -38,6 +38,7 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
+    "django_celery_results",
     "user",
     "crawler",
     "news"
@@ -138,7 +139,7 @@ AUTH_USER_MODEL = 'user.User'
 
 # CELERY setting
 
-# CELERY_RESULT_BACKEND = 'django-db'
+CELERY_RESULT_BACKEND = 'django-db'
 
 # BROKER setting
 
