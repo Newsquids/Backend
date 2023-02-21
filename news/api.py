@@ -37,9 +37,9 @@ def read_news(request, page:int, channel:str, category:str = None):
     channel_obj = NewsChannel.objects.get(channel_name=channel)
     if category != None:
         category = NewsCategory.objects.get(category_name=category)
-        News_obj = News.objects.filter(channel=channel_obj, category=category).all().order_by('-create_time','-id')[(page-1)*5:page*5]
+        News_obj = News.objects.filter(channel=channel_obj, category=category).all().order_by('-created_time','-id')[(page-1)*5:page*5]
     else:
-        News_obj = News.objects.filter(channel=channel_obj).order_by('-create_time','-id').all()[(page-1)*5:page*5]
+        News_obj = News.objects.filter(channel=channel_obj).order_by('-created_time','-id').all()[(page-1)*5:page*5]
     res = {"newsItems" : []}
     for obj in News_obj:
         tem_dict = {}
@@ -49,7 +49,7 @@ def read_news(request, page:int, channel:str, category:str = None):
         tem_dict['newsImage'] = obj.image
         tem_dict['newsHeadline'] = obj.headline
         tem_dict['newsCategory'] = obj.category.category_name
-        tem_dict['newsDate'] = obj.create_time
+        tem_dict['newsDate'] = obj.created_time
         tem_dict['isBookmarked'] = False
         res["newsItems"].append(tem_dict)
     return res

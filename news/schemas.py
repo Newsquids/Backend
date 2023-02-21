@@ -7,7 +7,7 @@ class NewsInSchema(Schema):
     link : str
     headline : str
     image : str = None
-    create_time : datetime
+    created_time : datetime
     category : str
 
 class NewsListSchema(Schema):

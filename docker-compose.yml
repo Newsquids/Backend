@@ -4,7 +4,12 @@ services:
   django:
     build: .
     container_name: django
-    command: python manage.py runserver 0.0.0.0:8000
+    command: 
+      - bash
+      - -c
+      - |
+        python manage.py migrate
+        python manage.py runserver 0.0.0.0:8000
     volumes:
       - .:/usr/src/app/
     ports:
@@ -12,10 +17,10 @@ services:
     environment:
       - DEBUG=1
       - DJANGO_SECRET_KEY=${DJANGO_SECRET_KEY}
-      - DJANGO_ALLOWED_HOSTS=localhost 127.0.0.1
     depends_on:
       - rabbitmq
       - pgdb
+    entrypoint: ./
   celery:
     build: .
     container_name: celery-worker
