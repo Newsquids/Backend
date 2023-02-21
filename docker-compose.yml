@@ -20,7 +20,6 @@ services:
     depends_on:
       - rabbitmq
       - pgdb
-    entrypoint: ./
   celery:
     build: .
     container_name: celery-worker

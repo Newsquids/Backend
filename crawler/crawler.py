@@ -6,6 +6,7 @@ from datetime import datetime, timedelta
 from webdriver_manager.chrome import ChromeDriverManager
 from news.models import News, NewsChannel, NewsCategory
 from django.db import IntegrityError
+from asgiref.sync import sync_to_async
 import asyncio
 
 
@@ -33,10 +34,13 @@ class Crawl:
             "cryptoslate" : {"crime" : "crime-bankruptcy", "regulation" : "regulation", "cbdcs" : "cbdc", "bankruptcy" : "crime-bankruptcy", "analysis" : "crypto", "defi" : "defi", "nfts" : "nft", "partnerships" : "business", "exchanges" : "business", "news/bitcoin" : "crypto", "news/ethereum" : "crypto"}
 
         }
+    
+    @sync_to_async
     def check_link_exists(self, link:str):
         exist_or_not = News.objects.filter(link=link).exists()
         return exist_or_not
     
+    @sync_to_async
     def save_data(self, category:str, channel:str, **kwargs):
         cat = NewsCategory.objects.get(category_name=category)
         ch = NewsChannel.objects.get(channel_name=channel)
@@ -45,24 +49,6 @@ class Crawl:
             return True
         except IntegrityError:
             return False
-
-    def get_dict_or_data(self, site:str, dict:bool=False):
-        if dict == True:
-            with open(f"/Users/s/Desktop/Study/Toyproject/Newsquids/Backend/crawler/files/{site}/new_link.txt","r") as f:
-                read_file = f.read()
-        else:
-            with open(f"/Users/s/Desktop/Study/Toyproject/Newsquids/Backend/crawler/files/{site}/new_data.txt","r") as f:
-                read_file = f.read()
-        return eval(read_file)
-    
-    def update_dict_or_data(self, site:str, data:str, dict:bool=False):
-        if dict == True:
-            with open(f"/Users/s/Desktop/Study/Toyproject/Newsquids/Backend/crawler/files/{site}/new_link.txt","w") as f:
-                f.write(data)
-        else:
-            with open(f"/Users/s/Desktop/Study/Toyproject/Newsquids/Backend/crawler/files/{site}/new_data.txt","w") as f:
-                f.write(data)
-        return
     
     def get_data_or_None(self, data):
         try:

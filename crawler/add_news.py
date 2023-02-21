@@ -24,4 +24,4 @@ for site in sites:
             dic["create_time"] = data[3]
         dic["category"] = data[4]
         content = json.dumps(dic)
-        rq = requests.post(url="http://3.36.90.21:8000/api/news",data=content)
+        rq = requests.post(url="http:localhost:8000/api/news",data=content)
