@@ -36,9 +36,11 @@ class Crawl:
         }
     
     @sync_to_async
-    def check_link_exists(self, link:str):
-        exist_or_not = News.objects.filter(link=link).exists()
-        return exist_or_not
+    def check_link_channel(self, channel:str):
+        channel = NewsChannel.objects.get(channel_name=channel)
+        links = News.objects.select_related('channel').all()
+        link_dict = {link:True for link in links}
+        return link_dict
     
     @sync_to_async
     def save_data(self, category:str, channel:str, data:dict):
@@ -158,6 +160,7 @@ class Crawl:
         tem_web = Chrome(ChromeDriverManager().install(), options=ops)
         tem_web.set_page_load_timeout(30)
         base_url = f"https://www.{site}.com"
+        link_dict = self.check_link_channel(channel=site)
         for category in self.sites_categories[site]:
             print(f'{site} : {category} 크롤링을 시작합니다.')
             url = base_url + f"/{category}"
@@ -167,33 +170,35 @@ class Crawl:
                 titles = web.find_elements(By.CLASS_NAME,"Card-title")
                 for title in titles:
                     link = title.get_attribute("href")
-                    if self.check_link_exists(link=link):
-                        print("이미 존재하는 주소입니다.")
-                        continue
-                    headline = title.text
-                    print(f"{site}의 {link} 크롤링 중...")
-                    tem_web.get(link)
-                    tem_web.execute_script("window.scrollTo(0, document.body.scrollHeight);")
-                    await asyncio.sleep(3)
                     try:
-                        image = tem_web.find_element(By.TAG_NAME, "picture").find_element(By.TAG_NAME,"img").get_attribute("src")
-                    except NoSuchElementException or NoSuchAttributeException:
-                        image = None
-                    time_obj = tem_web.find_elements(By.TAG_NAME, "time")
-                    for t in time_obj: 
-                        pub_time = t.get_attribute("datetime")
-                        if pub_time == None:
-                            pub_time = f'{t.text}T{t.find_element(By.TAG_NAME, "span").text}'
-                        break
-                    time = self.preprocess_time(site=site,link=link,time=pub_time)
-                    if not time:
-                        continue
-                    cat = self.db_category[site][category]
-                    data = {"link" : link, "headline" : headline, "image" : image, "created_time" : time}
-                    if self.save_data(channel=site, category=cat, data=data):
-                        print(f"{site}의 {link} 크롤링 완료")
-                    else:
-                        print(f"{site}의 {link} 크롤링 실패")
+                        link_dict[link]
+                        print("이미 존재하는 주소입니다.")
+                    except KeyError:
+                        headline = title.text
+                        print(f"{site}의 {link} 크롤링 중...")
+                        tem_web.get(link)
+                        tem_web.execute_script("window.scrollTo(0, document.body.scrollHeight);")
+                        await asyncio.sleep(3)
+                        try:
+                            image = tem_web.find_element(By.TAG_NAME, "picture").find_element(By.TAG_NAME,"img").get_attribute("src")
+                        except NoSuchElementException or NoSuchAttributeException:
+                            image = None
+                        time_obj = tem_web.find_elements(By.TAG_NAME, "time")
+                        for t in time_obj: 
+                            pub_time = t.get_attribute("datetime")
+                            if pub_time == None:
+                                pub_time = f'{t.text}T{t.find_element(By.TAG_NAME, "span").text}'
+                            break
+                        time = self.preprocess_time(site=site,link=link,time=pub_time)
+                        if not time:
+                            continue
+                        cat = self.db_category[site][category]
+                        data = {"link" : link, "headline" : headline, "image" : image, "created_time" : time}
+                        if self.save_data(channel=site, category=cat, data=data):
+                            link_dict[link] = True
+                            print(f"{site}의 {link} 크롤링 완료")
+                        else:
+                            print(f"{site}의 {link} 크롤링 실패")
                     await asyncio.sleep(2.2)
             elif site == 'bbc':
                 boxes = web.find_elements(By.CLASS_NAME,"gs-c-promo")
@@ -204,35 +209,37 @@ class Crawl:
                             continue
                     except NoSuchElementException or NoSuchAttributeException:
                         continue
-                    if self.check_link_exists(link=link):
+                    try:
+                        link_dict[link]
                         print("이미 존재하는 주소입니다.")
-                        continue
-                    headline = box.find_element(By.TAG_NAME,'h3').text
-                    print(f"{site}의 {link} 크롤링 중...")
-                    try:
-                        tem_web.get(link)
-                    except TimeoutException or WebDriverException:
-                        print(f"{site}의 {link} 크롤링 실패")
-                        continue
-                    tem_web.execute_script("window.scrollTo(0, document.body.scrollHeight);")
-                    await asyncio.sleep(2.4)
-                    try:
-                        image = tem_web.find_element(By.TAG_NAME, "img").get_attribute('src')
-                    except NoSuchElementException or NoSuchAttributeException:
-                        image = None
-                    try:
-                        pub_time = tem_web.find_element(By.TAG_NAME,'time').get_attribute("datetime")
-                    except NoSuchElementException or NoSuchAttributeException:
-                        continue
-                    time = self.preprocess_time(site=site,link=link,time=pub_time)
-                    if not time:
-                        continue
-                    cat = self.db_category[site][category]
-                    data = {"link" : link, "headline" : headline, "image" : image, "created_time" : time}
-                    if self.save_data(channel=site, category=cat, data=data):
-                        print(f"{site}의 {link} 크롤링 완료")
-                    else:
-                        print(f"{site}의 {link} 크롤링 실패")
+                    except KeyError:
+                        headline = box.find_element(By.TAG_NAME,'h3').text
+                        print(f"{site}의 {link} 크롤링 중...")
+                        try:
+                            tem_web.get(link)
+                        except TimeoutException or WebDriverException:
+                            print(f"{site}의 {link} 크롤링 실패")
+                            continue
+                        tem_web.execute_script("window.scrollTo(0, document.body.scrollHeight);")
+                        await asyncio.sleep(2.4)
+                        try:
+                            image = tem_web.find_element(By.TAG_NAME, "img").get_attribute('src')
+                        except NoSuchElementException or NoSuchAttributeException:
+                            image = None
+                        try:
+                            pub_time = tem_web.find_element(By.TAG_NAME,'time').get_attribute("datetime")
+                        except NoSuchElementException or NoSuchAttributeException:
+                            continue
+                        time = self.preprocess_time(site=site,link=link,time=pub_time)
+                        if not time:
+                            continue
+                        cat = self.db_category[site][category]
+                        data = {"link" : link, "headline" : headline, "image" : image, "created_time" : time}
+                        if self.save_data(channel=site, category=cat, data=data):
+                            link_dict[link] = True
+                            print(f"{site}의 {link} 크롤링 완료")
+                        else:
+                            print(f"{site}의 {link} 크롤링 실패")
                     await asyncio.sleep(2.2)
             elif site == 'reuters':
                 await asyncio.sleep(2)
@@ -241,40 +248,41 @@ class Crawl:
                     try:
                         link_element = box.find_element(By.CLASS_NAME,"media-story-card__heading__eqhp9")
                         link = link_element.get_attribute('href')
-                        if self.check_link_exists(link=link):
-                            print("이미 존재하는 주소입니다.")
+                        link_dict[link]
+                        print("이미 존재하는 주소입니다.")
+                    except NoSuchElementException or NoSuchAttributeException:
+                        continue
+                    except KeyError:
+                        print(f"{site}의 {link} 크롤링 중...")
+                        action = ActionChains(web)
+                        action.move_to_element(link_element)
+                        action.perform()
+                        await asyncio.sleep(2)
+                        try:
+                            tem_web.get(link)
+                        except TimeoutException:
                             continue
-                    except NoSuchElementException or NoSuchAttributeException:
-                        continue
-                    print(f"{site}의 {link} 크롤링 중...")
-                    action = ActionChains(web)
-                    action.move_to_element(link_element)
-                    action.perform()
-                    await asyncio.sleep(2)
-                    try:
-                        tem_web.get(link)
-                    except TimeoutException:
-                        continue
-                    try:
-                        headline = tem_web.find_element(By.TAG_NAME,"h1").text
-                    except NoSuchElementException:
-                        print(f'{site}의 {link}에서 에러가 발생했습니다')
-                        continue
-                    pub_times = tem_web.find_element(By.TAG_NAME,"time").find_elements(By.TAG_NAME,'span')
-                    pub_time = pub_times[1].text + pub_times[2].text
-                    time = self.preprocess_time(site=site,link=link,time=pub_time)
-                    if not time:
-                        continue
-                    try:
-                        image = box.find_element(By.TAG_NAME, "img").get_attribute('src')
-                    except NoSuchElementException or NoSuchAttributeException:
-                        image = None
-                    cat = self.db_category[site][category]
-                    data = {"link" : link, "headline" : headline, "image" : image, "created_time" : time}
-                    if self.save_data(channel=site, category=cat, data=data):
-                        print(f"{site}의 {link} 크롤링 완료")
-                    else:
-                        print(f"{site}의 {link} 크롤링 실패")
+                        try:
+                            headline = tem_web.find_element(By.TAG_NAME,"h1").text
+                        except NoSuchElementException:
+                            print(f'{site}의 {link}에서 에러가 발생했습니다')
+                            continue
+                        pub_times = tem_web.find_element(By.TAG_NAME,"time").find_elements(By.TAG_NAME,'span')
+                        pub_time = pub_times[1].text + pub_times[2].text
+                        time = self.preprocess_time(site=site,link=link,time=pub_time)
+                        if not time:
+                            continue
+                        try:
+                            image = box.find_element(By.TAG_NAME, "img").get_attribute('src')
+                        except NoSuchElementException or NoSuchAttributeException:
+                            image = None
+                        cat = self.db_category[site][category]
+                        data = {"link" : link, "headline" : headline, "image" : image, "created_time" : time}
+                        if self.save_data(channel=site, category=cat, data=data):
+                            link_dict[link] = True
+                            print(f"{site}의 {link} 크롤링 완료")
+                        else:
+                            print(f"{site}의 {link} 크롤링 실패")
             elif site == "coindesk":
                 web.execute_script("window.scrollTo(0, document.body.scrollHeight);")
                 await asyncio.sleep(4)
@@ -292,46 +300,48 @@ class Crawl:
                         pass
                     try:
                         link = box.get_attribute("href")
-                        if self.check_link_exists(link=link):
-                            print("이미 존재하는 주소입니다.")
-                            continue
                     except NoSuchAttributeException:
                         continue
                     try:
-                        print(f"{site}의 {link} 크롤링 중...")
-                        await asyncio.sleep(2.6)
-                        tem_web.get(link)
+                        link_dict[link]
+                        print("이미 존재하는 주소입니다.")
+                    except KeyError:
                         try:
-                            headline = tem_web.find_element(By.TAG_NAME, "h1").text
-                            if len(headline) < 10:
-                                headline = tem_web.find_element(By.CLASS_NAME,"at-headline").find_element(By.TAG_NAME,'h1').text
-                                if len(headline) < 10:
-                                    continue
-                        except NoSuchElementException:
-                            continue
-                        try:
-                            image = box.find_element(By.TAG_NAME,"img").get_attribute("src")
-                        except NoSuchElementException or NoSuchAttributeException:
-                            image = None
-                        try:
-                            pub_time = tem_web.find_element(By.CLASS_NAME,"at-created").find_element(By.TAG_NAME,"span").text
-                        except NoSuchElementException:
+                            print(f"{site}의 {link} 크롤링 중...")
+                            await asyncio.sleep(2.6)
+                            tem_web.get(link)
                             try:
-                                pub_time = tem_web.find_element(By.CLASS_NAME, "fUOSEs").text
+                                headline = tem_web.find_element(By.TAG_NAME, "h1").text
+                                if len(headline) < 10:
+                                    headline = tem_web.find_element(By.CLASS_NAME,"at-headline").find_element(By.TAG_NAME,'h1').text
+                                    if len(headline) < 10:
+                                        continue
                             except NoSuchElementException:
                                 continue
-                        time = self.preprocess_time(site=site,link=link,time=pub_time)
-                        if not time:
-                            continue
-                        cat = self.db_category[site][category]
-                        data = {"link" : link, "headline" : headline, "image" : image, "created_time" : time}
-                        if self.save_data(channel=site, category=cat, data=data):
-                            print(f"{site}의 {link} 크롤링 완료")
-                        else:
+                            try:
+                                image = box.find_element(By.TAG_NAME,"img").get_attribute("src")
+                            except NoSuchElementException or NoSuchAttributeException:
+                                image = None
+                            try:
+                                pub_time = tem_web.find_element(By.CLASS_NAME,"at-created").find_element(By.TAG_NAME,"span").text
+                            except NoSuchElementException:
+                                try:
+                                    pub_time = tem_web.find_element(By.CLASS_NAME, "fUOSEs").text
+                                except NoSuchElementException:
+                                    continue
+                            time = self.preprocess_time(site=site,link=link,time=pub_time)
+                            if not time:
+                                continue
+                            cat = self.db_category[site][category]
+                            data = {"link" : link, "headline" : headline, "image" : image, "created_time" : time}
+                            if self.save_data(channel=site, category=cat, data=data):
+                                print(f"{site}의 {link} 크롤링 완료")
+                                link_dict[link] = True
+                            else:
+                                print(f"{site}의 {link} 크롤링 실패")
+                        except TimeoutException:
                             print(f"{site}의 {link} 크롤링 실패")
-                    except TimeoutException:
-                        print(f"{site}의 {link} 크롤링 실패")
-                        continue
+                            continue
             elif site == "cointelegraph":
                 await asyncio.sleep(2)
                 web.execute_script("window.scrollTo(0, document.body.scrollHeight);")
@@ -340,33 +350,35 @@ class Crawl:
                 action = ActionChains(web)
                 for box in boxes:
                     link = box.find_element(By.TAG_NAME, "a").get_attribute("href")
-                    if self.check_link_exists(link=link):
-                        print("이미 존재하는 주소입니다.")
-                        continue
                     try:
-                        print(f"{site}의 {link} 크롤링 중...")
-                        await asyncio.sleep(2.6)
-                        headline = box.find_element(By.CLASS_NAME, "post-card-inline__title").text
+                        link_dict[link]
+                        print("이미 존재하는 주소입니다.")
+                    except KeyError:
                         try:
-                            image = box.find_element(By.TAG_NAME, "img").get_attribute("src")
-                        except NoSuchElementException or NoSuchAttributeException:
-                            image = None
-                        try:
-                            pub_time = box.find_element(By.TAG_NAME, "time").get_attribute("datetime")
-                        except NoSuchElementException or NoSuchAttributeException:
-                            continue
-                        time = self.preprocess_time(site=site,link=link,time=pub_time)
-                        if not time:
-                            continue
-                        cat = self.db_category[site][category]
-                        data = {"link" : link, "headline" : headline, "image" : image, "created_time" : time}
-                        if self.save_data(channel=site, category=cat, data=data):
-                            print(f"{site}의 {link} 크롤링 완료")
-                        else:
+                            print(f"{site}의 {link} 크롤링 중...")
+                            await asyncio.sleep(2.6)
+                            headline = box.find_element(By.CLASS_NAME, "post-card-inline__title").text
+                            try:
+                                image = box.find_element(By.TAG_NAME, "img").get_attribute("src")
+                            except NoSuchElementException or NoSuchAttributeException:
+                                image = None
+                            try:
+                                pub_time = box.find_element(By.TAG_NAME, "time").get_attribute("datetime")
+                            except NoSuchElementException or NoSuchAttributeException:
+                                continue
+                            time = self.preprocess_time(site=site,link=link,time=pub_time)
+                            if not time:
+                                continue
+                            cat = self.db_category[site][category]
+                            data = {"link" : link, "headline" : headline, "image" : image, "created_time" : time}
+                            if self.save_data(channel=site, category=cat, data=data):
+                                link_dict[link] = True
+                                print(f"{site}의 {link} 크롤링 완료")
+                            else:
+                                print(f"{site}의 {link} 크롤링 실패")
+                        except TimeoutException or WebDriverException:
                             print(f"{site}의 {link} 크롤링 실패")
-                    except TimeoutException or WebDriverException:
-                        print(f"{site}의 {link} 크롤링 실패")
-                        continue
+                            continue
             elif site == "cryptoslate":
                 await asyncio.sleep(2)
                 web.execute_script("window.scrollTo(0, document.body.scrollHeight);")
@@ -377,35 +389,37 @@ class Crawl:
                 for box in boxes:
                     link_element = box.find_element(By.TAG_NAME, "a")
                     link = link_element.get_attribute("href")
-                    action.move_to_element(link_element)
-                    if self.check_link_exists(link=link):
-                        print("이미 존재하는 주소입니다.")
-                        continue
                     try:
-                        print(f"{site}의 {link} 크롤링 중...")
-                        action.perform()
-                        await asyncio.sleep(2)
-                        headline = box.find_element(By.TAG_NAME, "h2").text
+                        link_dict[link]
+                        print("이미 존재하는 주소입니다.")
+                    except KeyError:
+                        action.move_to_element(link_element)
                         try:
-                            image = box.find_element(By.TAG_NAME, "img").get_attribute("src")
-                        except NoSuchElementException or NoSuchAttributeException:
-                            image = None
-                        try:
-                            pub_time = f'{box.find_element(By.CLASS_NAME, "read").text}, {datetime.now()}'
-                        except NoSuchElementException:
-                            continue
-                        time = self.preprocess_time(site=site,link=link,time=pub_time)
-                        if not time:
-                            continue
-                        cat = self.db_category[site][category]
-                        data = {"link" : link, "headline" : headline, "image" : image, "created_time" : time}
-                        if self.save_data(channel=site, category=cat, data=data):
-                            print(f"{site}의 {link} 크롤링 완료")
-                        else:
+                            print(f"{site}의 {link} 크롤링 중...")
+                            action.perform()
+                            await asyncio.sleep(2)
+                            headline = box.find_element(By.TAG_NAME, "h2").text
+                            try:
+                                image = box.find_element(By.TAG_NAME, "img").get_attribute("src")
+                            except NoSuchElementException or NoSuchAttributeException:
+                                image = None
+                            try:
+                                pub_time = f'{box.find_element(By.CLASS_NAME, "read").text}, {datetime.now()}'
+                            except NoSuchElementException:
+                                continue
+                            time = self.preprocess_time(site=site,link=link,time=pub_time)
+                            if not time:
+                                continue
+                            cat = self.db_category[site][category]
+                            data = {"link" : link, "headline" : headline, "image" : image, "created_time" : time}
+                            if self.save_data(channel=site, category=cat, data=data):
+                                link_dict[link] = True
+                                print(f"{site}의 {link} 크롤링 완료")
+                            else:
+                                print(f"{site}의 {link} 크롤링 실패")
+                        except TimeoutException or WebDriverException:
                             print(f"{site}의 {link} 크롤링 실패")
-                    except TimeoutException or WebDriverException:
-                        print(f"{site}의 {link} 크롤링 실패")
-                        continue
+                            continue
                 await asyncio.sleep(2.6)
         web.quit()
         tem_web.quit()
