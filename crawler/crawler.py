@@ -415,8 +415,7 @@ class Crawl:
 async def main ():
     crawler = Crawl()
     sites = crawler.all_sites
-    for site in sites:
-        asyncio.run(crawler.crawling_sites(site))
+    asyncio.gather(*[crawler.crawling_sites(site) for site in sites])
     return
 
 if __name__=='__main__':
