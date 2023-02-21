@@ -41,11 +41,15 @@ class Crawl:
         return exist_or_not
     
     @sync_to_async
-    def save_data(self, category:str, channel:str, **kwargs):
+    def save_data(self, category:str, channel:str, data:dict):
         cat = NewsCategory.objects.get(category_name=category)
         ch = NewsChannel.objects.get(channel_name=channel)
+        link = data['link']
+        headline = data['headline']
+        image = data['image']
+        created_time = data['created_time']
         try:
-            News.objects.create(channel=ch, category=cat, **kwargs)
+            News.objects.create(channel=ch, category=cat, link=link, headline=headline, image=image, created_time=created_time)
             return True
         except IntegrityError:
             return False
@@ -163,7 +167,7 @@ class Crawl:
                 titles = web.find_elements(By.CLASS_NAME,"Card-title")
                 for title in titles:
                     link = title.get_attribute("href")
-                    if await self.check_link_exists(link=link):
+                    if self.check_link_exists(link=link):
                         print("이미 존재하는 주소입니다.")
                         continue
                     headline = title.text
@@ -186,7 +190,7 @@ class Crawl:
                         continue
                     cat = self.db_category[site][category]
                     data = {"link" : link, "headline" : headline, "image" : image, "created_time" : time}
-                    if await self.save_data(channel=site, category=cat, kwargs=data):
+                    if self.save_data(channel=site, category=cat, data=data):
                         print(f"{site}의 {link} 크롤링 완료")
                     else:
                         print(f"{site}의 {link} 크롤링 실패")
@@ -200,7 +204,7 @@ class Crawl:
                             continue
                     except NoSuchElementException or NoSuchAttributeException:
                         continue
-                    if await self.check_link_exists(link=link):
+                    if self.check_link_exists(link=link):
                         print("이미 존재하는 주소입니다.")
                         continue
                     headline = box.find_element(By.TAG_NAME,'h3').text
@@ -225,7 +229,7 @@ class Crawl:
                         continue
                     cat = self.db_category[site][category]
                     data = {"link" : link, "headline" : headline, "image" : image, "created_time" : time}
-                    if await self.save_data(channel=site, category=cat, kwargs=data):
+                    if self.save_data(channel=site, category=cat, data=data):
                         print(f"{site}의 {link} 크롤링 완료")
                     else:
                         print(f"{site}의 {link} 크롤링 실패")
@@ -237,7 +241,7 @@ class Crawl:
                     try:
                         link_element = box.find_element(By.CLASS_NAME,"media-story-card__heading__eqhp9")
                         link = link_element.get_attribute('href')
-                        if await self.check_link_exists(link=link):
+                        if self.check_link_exists(link=link):
                             print("이미 존재하는 주소입니다.")
                             continue
                     except NoSuchElementException or NoSuchAttributeException:
@@ -267,7 +271,7 @@ class Crawl:
                         image = None
                     cat = self.db_category[site][category]
                     data = {"link" : link, "headline" : headline, "image" : image, "created_time" : time}
-                    if await self.save_data(channel=site, category=cat, kwargs=data):
+                    if self.save_data(channel=site, category=cat, data=data):
                         print(f"{site}의 {link} 크롤링 완료")
                     else:
                         print(f"{site}의 {link} 크롤링 실패")
@@ -288,7 +292,7 @@ class Crawl:
                         pass
                     try:
                         link = box.get_attribute("href")
-                        if await self.check_link_exists(link=link):
+                        if self.check_link_exists(link=link):
                             print("이미 존재하는 주소입니다.")
                             continue
                     except NoSuchAttributeException:
@@ -321,7 +325,7 @@ class Crawl:
                             continue
                         cat = self.db_category[site][category]
                         data = {"link" : link, "headline" : headline, "image" : image, "created_time" : time}
-                        if await self.save_data(channel=site, category=cat, kwargs=data):
+                        if self.save_data(channel=site, category=cat, data=data):
                             print(f"{site}의 {link} 크롤링 완료")
                         else:
                             print(f"{site}의 {link} 크롤링 실패")
@@ -336,7 +340,7 @@ class Crawl:
                 action = ActionChains(web)
                 for box in boxes:
                     link = box.find_element(By.TAG_NAME, "a").get_attribute("href")
-                    if await self.check_link_exists(link=link):
+                    if self.check_link_exists(link=link):
                         print("이미 존재하는 주소입니다.")
                         continue
                     try:
@@ -356,7 +360,7 @@ class Crawl:
                             continue
                         cat = self.db_category[site][category]
                         data = {"link" : link, "headline" : headline, "image" : image, "created_time" : time}
-                        if await self.save_data(channel=site, category=cat, kwargs=data):
+                        if self.save_data(channel=site, category=cat, data=data):
                             print(f"{site}의 {link} 크롤링 완료")
                         else:
                             print(f"{site}의 {link} 크롤링 실패")
@@ -374,7 +378,7 @@ class Crawl:
                     link_element = box.find_element(By.TAG_NAME, "a")
                     link = link_element.get_attribute("href")
                     action.move_to_element(link_element)
-                    if await self.check_link_exists(link=link):
+                    if self.check_link_exists(link=link):
                         print("이미 존재하는 주소입니다.")
                         continue
                     try:
@@ -395,7 +399,7 @@ class Crawl:
                             continue
                         cat = self.db_category[site][category]
                         data = {"link" : link, "headline" : headline, "image" : image, "created_time" : time}
-                        if await self.save_data(channel=site, category=cat, kwargs=data):
+                        if self.save_data(channel=site, category=cat, data=data):
                             print(f"{site}의 {link} 크롤링 완료")
                         else:
                             print(f"{site}의 {link} 크롤링 실패")
