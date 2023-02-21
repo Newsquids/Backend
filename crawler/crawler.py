@@ -4,9 +4,9 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver import ActionChains, ChromeOptions, Chrome
 from datetime import datetime, timedelta
 from webdriver_manager.chrome import ChromeDriverManager
-from news.models import News, NewsChannel, NewsCategory
 from django.db import IntegrityError
 from asgiref.sync import sync_to_async
+from news.models import News, NewsChannel, NewsCategory
 import asyncio
 
 
@@ -149,6 +149,7 @@ class Crawl:
         ops = ChromeOptions()
         ops.add_argument("--headless")
         ops.add_argument("--no-sandbox")
+        ops.add_argument("--disable-dev-shm-usage")
         web = Chrome(ChromeDriverManager().install(), options=ops)
         tem_web = Chrome(ChromeDriverManager().install(), options=ops)
         tem_web.set_page_load_timeout(30)
@@ -410,7 +411,8 @@ class Crawl:
 async def main ():
     crawler = Crawl()
     sites = crawler.all_sites
-    await asyncio.gather(*[crawler.crawling_sites(site) for site in sites])
+    for site in sites:
+        asyncio.run(crawler.crawling_sites(site))
     return
 
 if __name__=='__main__':
