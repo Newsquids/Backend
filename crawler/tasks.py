@@ -10,5 +10,5 @@ def crawling_site():
     sites = crawler.all_sites
     crawling = crawler.crawling_sites
     for site in sites:
-        asyncio.run(crawling(site=site))
+        asyncio.run(crawling(site))
     return
