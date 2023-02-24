@@ -22,6 +22,7 @@ class NewsListSchema(Schema):
 
 class NewsOutSchema(Schema):
     newsItems : List[NewsListSchema]
+    lastPage : bool = False
 
 class NewsChannelSchema(Schema):
     channels : list

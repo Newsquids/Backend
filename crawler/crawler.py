@@ -38,8 +38,8 @@ class Crawl:
     @sync_to_async
     def check_link_channel(self, channel:str):
         channel = NewsChannel.objects.get(channel_name=channel)
-        links = News.objects.select_related('channel').all()
-        link_dict = {link:True for link in links}
+        links = News.objects.select_related('channel').filter(channel=channel).all()
+        link_dict = {link.link:True for link in links}
         return link_dict
     
     @sync_to_async
@@ -100,7 +100,7 @@ class Crawl:
                     tem_link = link.split('2023')
                     tem_date = tem_link[1][:6].replace('/','-')
                     day = '2023'+tem_date
-                elif '2022' in time:
+                elif '2022' in link:
                     tem_link = link.split('2022')
                     tem_date = tem_link[1][:6].replace('/','-')
                     day = '2022'+tem_date
@@ -160,7 +160,7 @@ class Crawl:
         tem_web = Chrome(ChromeDriverManager().install(), options=ops)
         tem_web.set_page_load_timeout(30)
         base_url = f"https://www.{site}.com"
-        link_dict = self.check_link_channel(channel=site)
+        link_dict = await self.check_link_channel(channel=site)
         for category in self.sites_categories[site]:
             print(f'{site} : {category} 크롤링을 시작합니다.')
             url = base_url + f"/{category}"
@@ -194,7 +194,7 @@ class Crawl:
                             continue
                         cat = self.db_category[site][category]
                         data = {"link" : link, "headline" : headline, "image" : image, "created_time" : time}
-                        if self.save_data(channel=site, category=cat, data=data):
+                        if await self.save_data(channel=site, category=cat, data=data):
                             link_dict[link] = True
                             print(f"{site}의 {link} 크롤링 완료")
                         else:
@@ -235,12 +235,12 @@ class Crawl:
                             continue
                         cat = self.db_category[site][category]
                         data = {"link" : link, "headline" : headline, "image" : image, "created_time" : time}
-                        if self.save_data(channel=site, category=cat, data=data):
+                        if await self.save_data(channel=site, category=cat, data=data):
                             link_dict[link] = True
                             print(f"{site}의 {link} 크롤링 완료")
                         else:
                             print(f"{site}의 {link} 크롤링 실패")
-                    await asyncio.sleep(2.2)
+                        await asyncio.sleep(2.2)
             elif site == 'reuters':
                 await asyncio.sleep(2)
                 li_boxes = web.find_elements(By.CLASS_NAME,"story-card")
@@ -278,7 +278,7 @@ class Crawl:
                             image = None
                         cat = self.db_category[site][category]
                         data = {"link" : link, "headline" : headline, "image" : image, "created_time" : time}
-                        if self.save_data(channel=site, category=cat, data=data):
+                        if await self.save_data(channel=site, category=cat, data=data):
                             link_dict[link] = True
                             print(f"{site}의 {link} 크롤링 완료")
                         else:
@@ -334,7 +334,7 @@ class Crawl:
                                 continue
                             cat = self.db_category[site][category]
                             data = {"link" : link, "headline" : headline, "image" : image, "created_time" : time}
-                            if self.save_data(channel=site, category=cat, data=data):
+                            if await self.save_data(channel=site, category=cat, data=data):
                                 print(f"{site}의 {link} 크롤링 완료")
                                 link_dict[link] = True
                             else:
@@ -371,7 +371,7 @@ class Crawl:
                                 continue
                             cat = self.db_category[site][category]
                             data = {"link" : link, "headline" : headline, "image" : image, "created_time" : time}
-                            if self.save_data(channel=site, category=cat, data=data):
+                            if await self.save_data(channel=site, category=cat, data=data):
                                 link_dict[link] = True
                                 print(f"{site}의 {link} 크롤링 완료")
                             else:
@@ -412,7 +412,7 @@ class Crawl:
                                 continue
                             cat = self.db_category[site][category]
                             data = {"link" : link, "headline" : headline, "image" : image, "created_time" : time}
-                            if self.save_data(channel=site, category=cat, data=data):
+                            if await self.save_data(channel=site, category=cat, data=data):
                                 link_dict[link] = True
                                 print(f"{site}의 {link} 크롤링 완료")
                             else:
@@ -429,7 +429,7 @@ class Crawl:
 async def main ():
     crawler = Crawl()
     sites = crawler.all_sites
-    asyncio.gather(*[crawler.crawling_sites(site) for site in sites])
+    await asyncio.gather(*[crawler.crawling_sites(site) for site in sites])
     return
 
 if __name__=='__main__':
