@@ -11,7 +11,7 @@ from django.core.mail.message import EmailMessage
 from elasticsearch import Elasticsearch
 
 
-def search_data(start:int, content:str|int, category_id:int = None, only_channel_data:bool = False):
+def search_data(start:int, content:str or int, category_id:int = None, only_channel_data:bool = False):
     '''
     start : int
     only_channel_data : bool
