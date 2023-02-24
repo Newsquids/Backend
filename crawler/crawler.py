@@ -199,7 +199,7 @@ class Crawl:
                             print(f"{site}의 {link} 크롤링 완료")
                         else:
                             print(f"{site}의 {link} 크롤링 실패")
-                    await asyncio.sleep(2.2)
+                        await asyncio.sleep(2.2)
             elif site == 'bbc':
                 boxes = web.find_elements(By.CLASS_NAME,"gs-c-promo")
                 for box in boxes:

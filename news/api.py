@@ -61,7 +61,7 @@ def search_data(start:int, content:str or int, category_id:int = None, only_chan
             "size" : 5
             })
     data = result['hits']['hits']
-    last_page =  start_point > (result['hits']['totla']['value'] - 5)
+    last_page =  start_point > (result['hits']['total']['value'] - 5)
     return data, last_page
 
 
