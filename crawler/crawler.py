@@ -109,11 +109,15 @@ class Crawl:
                     hour = tem[0][-1]
                     if 'p.m' in time:
                         hour = str(int(hour) + 12)
+                        if hour == '24':
+                            hour = '23'
                     minute = tem[1][:2]
                 elif tem[0][-2] != ' ':
                     hour = tem[0][-2:]
                     if 'p.m' in time:
                         hour = str(int(hour) + 12)
+                        if hour == '24':
+                            hour = '23'
                     minute = tem[1][:2]
                 if len(hour) == 1:
                     hour = '0' + hour

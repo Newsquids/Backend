@@ -22,7 +22,7 @@ class NewsListSchema(Schema):
 
 class NewsOutSchema(Schema):
     newsItems : List[NewsListSchema]
-    lastPage : bool = False
+    pageNumber : int
 
 class NewsChannelSchema(Schema):
     channels : list
