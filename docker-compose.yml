@@ -18,6 +18,12 @@ services:
     environment:
       - DEBUG=1
       - DJANGO_SECRET_KEY=${DJANGO_SECRET_KEY}
+      - POSTGRES_DB=${POSTGRES_DB}
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+    networks:
+      default_bridge:
+        ipv4_address: 192.168.80.2
     depends_on:
       - rabbitmq
       - pgdb
@@ -28,8 +34,14 @@ services:
     environment:
       - DJANGO_SECRET_KEY=${DJANGO_SECRET_KEY}
       - CELERY_BROKER_URL='amqp://localhost'
+      - POSTGRES_DB=${POSTGRES_DB}
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
     volumes:
       - .:/usr/src/app/
+    networks:
+      default_bridge:
+        ipv4_address: 192.168.80.3
     depends_on:
       - django
       - rabbitmq
@@ -40,8 +52,14 @@ services:
     environment:
       - DJANGO_SECRET_KEY=${DJANGO_SECRET_KEY}
       - CELERY_BROKER_URL='amqp://localhost'
+      - POSTGRES_DB=${POSTGRES_DB}
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
     volumes:
       - .:/usr/src/app/
+    networks:
+      default_bridge:
+        ipv4_address: 192.168.80.4
     depends_on:
       - celery
       - django
@@ -53,6 +71,9 @@ services:
     ports:
       - "5672:5672"
       - "15672:15672"
+    networks:
+      default_bridge:
+        ipv4_address: 192.168.80.5
   pgdb:
     image: postgres
     container_name: "pgdb"
@@ -65,3 +86,13 @@ services:
       - POSTGRES_DB=${POSTGRES_DB}
       - POSTGRES_USER=${POSTGRES_USER}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+    networks:
+      default_bridge:
+        ipv4_address: 192.168.80.6
+
+networks:
+  default_bridge:
+    ipam:
+      driver: default
+      config:
+        - subnet: 192.168.80.0/20

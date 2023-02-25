@@ -15,7 +15,7 @@ app.conf.beat_schedule = {
     'crawler' : {
         'task' : 'crawler.tasks.crawling_site',
         # 매 시 30분에 Run
-        'schedule' : crontab(minute='30')
+        'schedule' : crontab(minute='00')
     }
 }
 
