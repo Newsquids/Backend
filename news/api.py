@@ -1,6 +1,5 @@
 from datetime import timedelta
 from django.utils import timezone
-from ninja.pagination import paginate, PageNumberPagination
 from ninja.errors import HttpError
 from ninja_jwt.authentication import JWTAuth
 from ninja_extra.shortcuts import get_object_or_exception
@@ -9,7 +8,9 @@ from news.schemas import NewsInSchema, NewsOutSchema, NewsChannelSchema, NewsCat
 from news.models import NewsChannel, NewsCategory, News
 from django.core.mail.message import EmailMessage
 from elasticsearch import Elasticsearch
+import os
 
+elastic_ip = os.getenv("ELASTIC_IP")
 
 def search_data(start:int, content:str or int, category_id:int = None, only_channel_data:bool = False):
     '''
@@ -25,7 +26,7 @@ def search_data(start:int, content:str or int, category_id:int = None, only_chan
 
     return => data:list, lastpage:bool
     '''
-    es = Elasticsearch(["http://localhost:9200"])
+    es = Elasticsearch([f'{elastic_ip}:9200'])
     start_point = start*5
     filters = None
 
@@ -108,12 +109,12 @@ def read_news(request, page:int, channel:str = None, category:str = None, search
     if category != None:
         channel_obj = NewsChannel.objects.get(channel_name=channel)
         category_obj = NewsCategory.objects.get(category_name=category)
-        data_list, last_page = search_data(start=page, content=channel_obj.id, category_id=category_obj.id)
+        data_list, page_number = search_data(start=page, content=channel_obj.id, category_id=category_obj.id)
     elif search == None:
         channel_obj = NewsChannel.objects.get(channel_name=channel)
-        data_list, last_page = search_data(start=page, content=channel_obj.id, only_channel_data=True)
+        data_list, page_number = search_data(start=page, content=channel_obj.id, only_channel_data=True)
     else:
-        data_list, last_page = search_data(start=page, content=search)
+        data_list, page_number = search_data(start=page, content=search)
     res = {"newsItems" : []}
     for data in data_list:
         tem_dict = {}
@@ -130,7 +131,7 @@ def read_news(request, page:int, channel:str = None, category:str = None, search
         tem_dict['newsDate'] = data['_source']['created_time']
         tem_dict['isBookmarked'] = False
         res["newsItems"].append(tem_dict)
-    res["lastPage"] = last_page
+    res["pageNumber"] = page_number
     return res
 
 @router.get("/rescent", response=NewsOutSchema)
