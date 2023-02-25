@@ -27,12 +27,17 @@ def search_data(start:int, content:str or int, category_id:int = None, only_chan
     '''
     es = Elasticsearch(["http://localhost:9200"])
     start_point = start*5
+    filters = None
 
     # 채널의 카테고리 별 자료 가져오기
     if category_id != None:
         match_content = {
             "category_id":f'{category_id}',
-            "channel_id":f'{content}'
+        }
+        filters = {
+            "term" : {
+                "channel_id" : f'{content}'
+            }
         }
     # 채널 별 자료 가져요기
     elif only_channel_data == True:
@@ -41,19 +46,28 @@ def search_data(start:int, content:str or int, category_id:int = None, only_chan
     else:
         match_content = {"headline":f'{content}'}
 
+    query = {
+        "bool" : {
+            "must" : {
+                "match" : match_content
+            }
+        }
+    }
+
+    if filters != None:
+        query["bool"]["filter"] = filters
+
     result = es.search(
         index="news",
         body={
             "from" : start_point,
-            "query" : {
-                "match" : match_content
-            },
+            "query" : query,
             "sort" : [{
-                        "id" : {
+                        "created_time" : {
                                 "order" : "desc"
                                 }
                         },{
-                        "created_time" : {
+                        "id" : {
                                 "order" : "desc"
                                 }
                         },
@@ -61,8 +75,8 @@ def search_data(start:int, content:str or int, category_id:int = None, only_chan
             "size" : 5
             })
     data = result['hits']['hits']
-    last_page =  start_point > (result['hits']['totla']['value'] - 5)
-    return data, last_page
+    page_number =  ((result['hits']['total']['value'] - 1)//5)
+    return data, page_number
 
 
 router = Router()
@@ -89,31 +103,68 @@ def create_news(request, payload:NewsInSchema):
 
 @router.get("", response=NewsOutSchema)
 def read_news(request, page:int, channel:str = None, category:str = None, search:str = None):
-    channel_obj = NewsChannel.objects.get(channel_name=channel)
+    if category != None and len(category) < 2:
+        category = None
     if category != None:
+        channel_obj = NewsChannel.objects.get(channel_name=channel)
         category_obj = NewsCategory.objects.get(category_name=category)
         data_list, last_page = search_data(start=page, content=channel_obj.id, category_id=category_obj.id)
     elif search == None:
+        channel_obj = NewsChannel.objects.get(channel_name=channel)
         data_list, last_page = search_data(start=page, content=channel_obj.id, only_channel_data=True)
     else:
         data_list, last_page = search_data(start=page, content=search)
     res = {"newsItems" : []}
     for data in data_list:
         tem_dict = {}
-        tem_dict['newsId'] = data['id']
-        tem_dict['newsOriginLink'] = data['link']
+        tem_dict['newsId'] = data['_source']['id']
+        tem_dict['newsOriginLink'] = data['_source']['link']
         if search != None:
-            channel_obj = NewsChannel.objects.get(id=data['channel_id'])
+            channel_obj = NewsChannel.objects.get(id=data['_source']['channel_id'])
         tem_dict['newsChannel'] = channel_obj.channel_name
-        tem_dict['newsImage'] = data['image']
-        tem_dict['newsHeadline'] = data['headline']
+        tem_dict['newsImage'] = data['_source']['image']
+        tem_dict['newsHeadline'] = data['_source']['headline']
         if category == None:
-            category_obj = NewsCategory.objects.get(category_name=category)
+            category_obj = NewsCategory.objects.get(id=data['_source']['category_id'])
         tem_dict['newsCategory'] = category_obj.category_name
-        tem_dict['newsDate'] = data['created_time']
+        tem_dict['newsDate'] = data['_source']['created_time']
         tem_dict['isBookmarked'] = False
         res["newsItems"].append(tem_dict)
     res["lastPage"] = last_page
+    return res
+
+@router.get("/rescent", response=NewsOutSchema)
+def read_news(request, page:int, channel:str = None, category:str = None, search:str = None):
+    if category == None or len(category) < 2:
+        category = None
+    try:
+        channel_obj = NewsChannel.objects.get(channel_name=channel)
+    except:
+        raise HttpError (status_code=400,message={"msg" : "채널명이 잘못되었습니다."})
+    if category != None:
+        category_obj = NewsCategory.objects.get(category_name=category)
+        data_list, page_number = search_data(start=page, content=channel_obj.id, category_id=category_obj.id)
+    elif search == None:
+        data_list, page_number = search_data(start=page, content=channel_obj.id, only_channel_data=True)
+    else:
+        data_list, page_number = search_data(start=page, content=search)
+    res = {"newsItems" : []}
+    for data in data_list:
+        tem_dict = {}
+        tem_dict['newsId'] = data['_source']['id']
+        tem_dict['newsOriginLink'] = data['_source']['link']
+        if search != None:
+            channel_obj = NewsChannel.objects.get(id=data['_source']['channel_id'])
+        tem_dict['newsChannel'] = channel_obj.channel_name
+        tem_dict['newsImage'] = data['_source']['image']
+        tem_dict['newsHeadline'] = data['_source']['headline']
+        if category == None:
+            category_obj = NewsCategory.objects.get(id=data['_source']['category_id'])
+        tem_dict['newsCategory'] = category_obj.category_name
+        tem_dict['newsDate'] = data['_source']['created_time']
+        tem_dict['isBookmarked'] = False
+        res["newsItems"].append(tem_dict)
+    res["pageNumber"] = page_number
     return res
 
 @router.post("/email")

@@ -109,11 +109,15 @@ class Crawl:
                     hour = tem[0][-1]
                     if 'p.m' in time:
                         hour = str(int(hour) + 12)
+                        if hour == '24':
+                            hour = '23'
                     minute = tem[1][:2]
                 elif tem[0][-2] != ' ':
                     hour = tem[0][-2:]
                     if 'p.m' in time:
                         hour = str(int(hour) + 12)
+                        if hour == '24':
+                            hour = '23'
                     minute = tem[1][:2]
                 if len(hour) == 1:
                     hour = '0' + hour
@@ -199,7 +203,7 @@ class Crawl:
                             print(f"{site}의 {link} 크롤링 완료")
                         else:
                             print(f"{site}의 {link} 크롤링 실패")
-                    await asyncio.sleep(2.2)
+                        await asyncio.sleep(2.2)
             elif site == 'bbc':
                 boxes = web.find_elements(By.CLASS_NAME,"gs-c-promo")
                 for box in boxes:
