@@ -93,6 +93,6 @@ services:
 networks:
   default_bridge:
     ipam:
-      driver: bridge
+      driver: default
       config:
         - subnet: 192.168.80.0/20
