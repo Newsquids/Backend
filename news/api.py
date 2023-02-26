@@ -23,6 +23,7 @@ def search_data(start:int, content:str or int, category_id:int = None, only_chan
     1. category_id가 None이 아닐때, 무조건 카테고리/채널 데이터 요청 (content = channel_id)
     2. category_id가 None이고, only_channel_data가 True일때, 채널의 데이터 요청 (content = channel_id)
     3. category_id가 None이고, only_channel_data가 False일때, 검색 기능 (content = headline content)
+    4. start를 제외한 모든 것이 None일때, 최신 데이터 요청
 
     return => data:list, lastpage:bool
     '''
@@ -30,11 +31,20 @@ def search_data(start:int, content:str or int, category_id:int = None, only_chan
     start_point = start*5
     filters = None
 
+
+        
     # 채널의 카테고리 별 자료 가져오기
     if category_id != None:
+        try:
+            NewsCategory.objects.get(id=category_id)
+        except NewsCategory.DoesNotExist:
+            raise HttpError(status_code=400, message="존재하지 않는 카테고리 입니다")
+
         match_content = {
-            "category_id":f'{category_id}',
-        }
+            "match" :
+                {
+                    "category_id" : f'{category_id}',
+                }}
         filters = {
             "term" : {
                 "channel_id" : f'{content}'
@@ -42,21 +52,38 @@ def search_data(start:int, content:str or int, category_id:int = None, only_chan
         }
     # 채널 별 자료 가져요기
     elif only_channel_data == True:
-        match_content = {"channel_id":f'{content}'}
+        try:
+            NewsChannel.objects.get(id=content)
+        except NewsCategory.DoesNotExist:
+            raise HttpError(status_code=400, message="존재하지 않는 채널 입니다")
+
+        match_content = {
+            "match" :
+            {
+                "channel_id" : f'{content}'
+            }}
     # 검색 기능
     else:
-        match_content = {"headline":f'{content}'}
+        match_content = {
+            "match" :
+            {
+                "headline" : f'{content}'
+            }}
 
     query = {
         "bool" : {
-            "must" : {
-                "match" : match_content
-            }
+            "must" : match_content
         }
     }
 
     if filters != None:
         query["bool"]["filter"] = filters
+
+    # 최신 글 가져오기
+    if content == None:
+        query = {
+            "match_all" : {}
+            }
 
     result = es.search(
         index="news",
@@ -64,11 +91,12 @@ def search_data(start:int, content:str or int, category_id:int = None, only_chan
             "from" : start_point,
             "query" : query,
             "sort" : [{
-                        "created_time" : {
+                        "id" : {
                                 "order" : "desc"
                                 }
-                        },{
-                        "id" : {
+                        },
+                        {
+                        "created_time" : {
                                 "order" : "desc"
                                 }
                         },
@@ -107,11 +135,20 @@ def read_news(request, page:int, channel:str = None, category:str = None, search
     if category != None and len(category) < 2:
         category = None
     if category != None:
-        channel_obj = NewsChannel.objects.get(channel_name=channel)
-        category_obj = NewsCategory.objects.get(category_name=category)
+        try:
+            category_obj = NewsCategory.objects.get(category_name=category)
+        except NewsCategory.DoesNotExist:
+            raise HttpError(status_code=400, message="존재하지 않는 카테고리 입니다")
+        try:
+            channel_obj = NewsChannel.objects.get(channel_name=channel)
+        except NewsChannel.DoesNotExist:
+            raise HttpError(status_code=400, message="존재하지 않는 채널 입니다")
         data_list, page_number = search_data(start=page, content=channel_obj.id, category_id=category_obj.id)
     elif search == None:
-        channel_obj = NewsChannel.objects.get(channel_name=channel)
+        try:
+            channel_obj = NewsChannel.objects.get(channel_name=channel)
+        except NewsChannel.DoesNotExist:
+            raise HttpError(status_code=400, message="존재하지 않는 채널 입니다")
         data_list, page_number = search_data(start=page, content=channel_obj.id, only_channel_data=True)
     else:
         data_list, page_number = search_data(start=page, content=search)
@@ -134,33 +171,19 @@ def read_news(request, page:int, channel:str = None, category:str = None, search
     res["pageNumber"] = page_number
     return res
 
-@router.get("/rescent", response=NewsOutSchema)
-def read_news(request, page:int, channel:str = None, category:str = None, search:str = None):
-    if category == None or len(category) < 2:
-        category = None
-    try:
-        channel_obj = NewsChannel.objects.get(channel_name=channel)
-    except:
-        raise HttpError (status_code=400,message={"msg" : "채널명이 잘못되었습니다."})
-    if category != None:
-        category_obj = NewsCategory.objects.get(category_name=category)
-        data_list, page_number = search_data(start=page, content=channel_obj.id, category_id=category_obj.id)
-    elif search == None:
-        data_list, page_number = search_data(start=page, content=channel_obj.id, only_channel_data=True)
-    else:
-        data_list, page_number = search_data(start=page, content=search)
+@router.get("/today", response=NewsOutSchema)
+def read_news(request, page:int):
+    data_list, page_number = search_data(start=page, content=None)
     res = {"newsItems" : []}
     for data in data_list:
         tem_dict = {}
         tem_dict['newsId'] = data['_source']['id']
         tem_dict['newsOriginLink'] = data['_source']['link']
-        if search != None:
-            channel_obj = NewsChannel.objects.get(id=data['_source']['channel_id'])
+        channel_obj = NewsChannel.objects.get(id=data['_source']['channel_id'])
         tem_dict['newsChannel'] = channel_obj.channel_name
         tem_dict['newsImage'] = data['_source']['image']
         tem_dict['newsHeadline'] = data['_source']['headline']
-        if category == None:
-            category_obj = NewsCategory.objects.get(id=data['_source']['category_id'])
+        category_obj = NewsCategory.objects.get(id=data['_source']['category_id'])
         tem_dict['newsCategory'] = category_obj.category_name
         tem_dict['newsDate'] = data['_source']['created_time']
         tem_dict['isBookmarked'] = False
@@ -169,7 +192,7 @@ def read_news(request, page:int, channel:str = None, category:str = None, search
     return res
 
 @router.post("/email")
-def send_email(request, payload:NewsEmail):
+async def send_email(request, payload:NewsEmail):
     mail = EmailMessage('test subject','test content', to=payload.emails)
     mail.send()
     return {"msg" : "메일 발송"}

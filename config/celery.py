@@ -14,7 +14,7 @@ app.config_from_object("django.conf:settings", namespace="CELERY")
 app.conf.beat_schedule = {
     'crawler' : {
         'task' : 'crawler.tasks.crawling_site',
-        # 매 시 30분에 Run
+        # 매 시 00분에 Run
         'schedule' : crontab(minute='00')
     }
 }
