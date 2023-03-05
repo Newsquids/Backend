@@ -11,8 +11,12 @@ https://docs.djangoproject.com/en/4.1/ref/settings/
 """
 
 from pathlib import Path
+from datetime import timedelta
+from django.conf import settings
 import os
+
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
+
 BASE_DIR = Path(__file__).resolve().parent.parent
 
     
@@ -24,6 +28,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = os.getenv("DJANGO_SECRET_KEY")
 
 # SECURITY WARNING: don't run with debug turned on in production!
+
 DEBUG = True
 
 ALLOWED_HOSTS = ["*"]
@@ -38,8 +43,27 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
+
+    # site
+    "django.contrib.sites",
+
+    # celery
     "django_celery_results",
+
+    # ninja
+    "ninja",
+    "ninja_jwt",
+    "ninja_auth",
+
+    # cors
     "corsheaders",
+
+    # auth
+    "allauth",
+    "allauth.socialaccount",
+    "allauth.socialaccount.providers.google",
+
+    # apps
     "user",
     "crawler",
     "news"
@@ -82,14 +106,14 @@ WSGI_APPLICATION = "config.wsgi.application"
 
 DATABASES = {
     "default": {
-        # "ENGINE": "django.db.backends.sqlite3",
-        # "NAME": BASE_DIR / "db.sqlite3",
-        "ENGINE": "django.db.backends.postgresql",
-        "NAME": os.getenv("POSTGRES_DB"),
-        "USER": os.getenv("POSTGRES_USER"),
-        "PASSWORD": os.getenv("POSTGRES_PASSWORD"),
-        "HOST": "pgdb",
-        "PORT": 5432,
+        "ENGINE": "django.db.backends.sqlite3",
+        "NAME": BASE_DIR / "db.sqlite3",
+        # "ENGINE": "django.db.backends.postgresql",
+        # "NAME": os.getenv("POSTGRES_DB"),
+        # "USER": os.getenv("POSTGRES_USER"),
+        # "PASSWORD": os.getenv("POSTGRES_PASSWORD"),
+        # "HOST": "pgdb",
+        # "PORT": 5432,
     }
 }
 
@@ -135,9 +159,16 @@ STATIC_URL = "static/"
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
-# Using User Model
+# User Model
 
 AUTH_USER_MODEL = 'user.User'
+ACCOUNT_EMAIL_REQUIRED = True
+ACCOUNT_AUTHENTICATION_METHOD = 'email'
+
+# site option
+REST_AUTH_TOKEN_MODEL = None
+REST_USE_JWT = True
+SITE_ID = 1
 
 # CELERY setting
 
@@ -152,6 +183,7 @@ EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD")
 EMAIL_USE_TLS = True
 EMAIL_PORT = 587
 DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
+
 
 # Cors
 CORS_ALLOW_CREDENTIALS = True
@@ -169,3 +201,13 @@ CORS_ALLOW_METHODS = (
     "POST",
     "PUT",
 )
+
+NINJA_JWT = {
+    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=30),
+    'REFRESH_TOKEN_LIFETIME': timedelta(hours=3),
+    'ROTATE_REFRESH_TOKENS': True,
+    'BLACKLIST_AFTER_ROTATION': True,
+
+    'ALGORITHM': 'HS256',
+    'SIGNING_KEY': settings.SECRET_KEY,
+}
