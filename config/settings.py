@@ -58,11 +58,6 @@ INSTALLED_APPS = [
     # cors
     "corsheaders",
 
-    # auth
-    "allauth",
-    "allauth.socialaccount",
-    "allauth.socialaccount.providers.google",
-
     # apps
     "user",
     "crawler",

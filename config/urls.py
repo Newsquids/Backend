@@ -30,10 +30,6 @@ Including another URLconf
 """
 # import orjson
 
-# class JSONRenderer(BaseRenderer):
-#     media_type = "application/json"
-#     def render(self, request, data, *, response_status):
-#         return orjson.dumps(data)
 
 from django.contrib import admin
 from django.urls import path
@@ -41,6 +37,12 @@ from ninja import NinjaAPI
 from news.api import router as news_router
 from user.api import router as user_router
 from ninja.renderers import BaseRenderer
+import orjson
+
+class JSONRenderer(BaseRenderer):
+    media_type = "application/json"
+    def render(self, request, data, *, response_status):
+        return orjson.dumps(data)
 
 api = NinjaAPI()
 api.add_router("news", news_router)

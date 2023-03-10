@@ -7,7 +7,7 @@ from ninja_jwt.authentication import JWTAuth
 from ninja_jwt.tokens import RefreshToken
 from ninja_extra.shortcuts import get_object_or_exception
 from ninja import Router
-from user.schemas import SignupSchema
+from user.schemas import SignupSchema, RefreshSchema
 import os, requests
 
 router = Router()
@@ -16,7 +16,7 @@ User = get_user_model()
 
 state = os.getenv("GOOGLE_USER_STATE")
 base_url = 'http://localhost:8000/'
-google_callback_uri = base_url + 'api/user/signin/google/callback'
+google_callback_uri = base_url + 'api/user/auth/google/callback'
 client_id = os.getenv("GOOGLE_CLIENT_ID")
 client_secret = os.getenv("GOOGLE_CLIENT_SECRET")
 local_secret = os.getenv("LOCAL_SECRET")
@@ -26,12 +26,12 @@ class AuthBearer(HttpBearer):
         if token == local_secret:
             return token
 
-@router.get("/signin/google")
+@router.get("/auth/google")
 def signin_google(request):
     scope = "https://www.googleapis.com/auth/userinfo.email"
     return redirect(f"https://accounts.google.com/o/oauth2/v2/auth?client_id={client_id}&response_type=code&redirect_uri={google_callback_uri}&scope={scope}")
 
-@router.get("/signin/google/callback")
+@router.get("/auth/google/callback")
 def callback_google(request):
     code = request.GET.get('code')
     req = requests.post(f"https://oauth2.googleapis.com/token?client_id={client_id}&client_secret={client_secret}&code={code}&grant_type=authorization_code&redirect_uri={google_callback_uri}&state={state}")
@@ -62,21 +62,29 @@ def callback_google(request):
         tokens = RefreshToken.for_user(user)
         refresh = str(tokens)
         access = str(tokens.access_token)
-        return {
+        res = {
             "access":access,
             "refresh":refresh
-            }
+        }
+        return Response(res)
     else:
         data = {'email' : email}
         auth = {'Authorization' : f'Bearer {local_secret}'}
-        create_user = requests.post(f"{base_url}api/user/signin/google/signup", json=data, headers=auth)
+        create_user = requests.post(f"{base_url}api/user/auth/google/signup", json=data, headers=auth)
         create_user_status = create_user.status_code
         if create_user_status != 200:
             raise HttpError(400, "회원가입 중 에러가 발생하였습니다.")
         return Response({"msg" : "회원가입에 성공하였습니다"})
 
-@router.post("/signin/google/signup", auth=AuthBearer())
+@router.post("/auth/google/signup", auth=AuthBearer())
 def signup_user(request, payload:SignupSchema):
     user = User.objects.create(email=payload.email)
     user.save()
     return
+
+@router.post("/refresh",)
+def get_refresh(request, refresh:RefreshSchema):
+    token = {}
+    token["access"] = refresh.access
+    token["refresh"] = refresh.refresh
+    return token

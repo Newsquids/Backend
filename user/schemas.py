@@ -1,6 +1,8 @@
 from ninja import Schema
-from datetime import datetime
-from typing import Optional, List
+from ninja_jwt.schema import TokenRefreshSerializer
 
 class SignupSchema(Schema):
     email : str
+
+class RefreshSchema(TokenRefreshSerializer):
+    refresh: str
