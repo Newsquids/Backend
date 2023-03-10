@@ -15,7 +15,7 @@ class User(AbstractUser):
         max_length=100
     )
 
-    username, last_login, first_name, last_name, is_staff = (None,None,None,None,None)
+    username, last_login, first_name, last_name = (None,None,None,None)
     USERNAME_FIELD = 'email'
     REQUIRED_FIELDS = []
     def __str__(self):

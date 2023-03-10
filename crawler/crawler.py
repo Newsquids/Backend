@@ -2,6 +2,7 @@
 from selenium.common.exceptions import NoSuchElementException, WebDriverException, TimeoutException, ElementNotInteractableException, NoSuchAttributeException
 from selenium.webdriver.common.by import By
 from selenium.webdriver import ActionChains, ChromeOptions, Chrome
+from selenium.webdriver.chrome.service import Service
 from datetime import datetime, timedelta
 from webdriver_manager.chrome import ChromeDriverManager
 from django.db import IntegrityError
@@ -160,8 +161,8 @@ class Crawl:
         ops.add_argument("--headless")
         ops.add_argument("--no-sandbox")
         ops.add_argument("--disable-dev-shm-usage")
-        web = Chrome(ChromeDriverManager().install(), options=ops)
-        tem_web = Chrome(ChromeDriverManager().install(), options=ops)
+        web = Chrome(service=Service(ChromeDriverManager().install()), options=ops)
+        tem_web = Chrome(service=Service(ChromeDriverManager().install()), options=ops)
         tem_web.set_page_load_timeout(30)
         base_url = f"https://www.{site}.com"
         link_dict = await self.check_link_channel(channel=site)

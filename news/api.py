@@ -91,12 +91,12 @@ def search_data(start:int, content:str or int, category_id:int = None, only_chan
             "from" : start_point,
             "query" : query,
             "sort" : [{
-                        "id" : {
+                        "created_time" : {
                                 "order" : "desc"
                                 }
                         },
                         {
-                        "created_time" : {
+                        "id" : {
                                 "order" : "desc"
                                 }
                         },
