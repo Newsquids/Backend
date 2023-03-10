@@ -175,6 +175,8 @@ def read_news(request, page:int, channel:str = None, category:str = None, search
 
 @router.get("/today", response=NewsOutSchema)
 def read_news(request, page:int):
+    if page == None:
+        return HttpError(400, '페이지 넘버가 없습니다')
     data_list, page_number = search_data(start=page, content=None)
     res = {"newsItems" : []}
     for data in data_list:
