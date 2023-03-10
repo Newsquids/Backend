@@ -132,6 +132,8 @@ def create_news(request, payload:NewsInSchema):
 
 @router.get("", response=NewsOutSchema)
 def read_news(request, page:int, channel:str = None, category:str = None, search:str = None):
+    if page == None:
+        return HttpError(400, "페이지 넘버가 없습니다")
     if category != None and len(category) < 2:
         category = None
     if category != None:
