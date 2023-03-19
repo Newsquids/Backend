@@ -53,7 +53,6 @@ INSTALLED_APPS = [
     # ninja
     "ninja",
     "ninja_jwt",
-    "ninja_auth",
 
     # cors
     "corsheaders",
