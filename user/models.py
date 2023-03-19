@@ -2,6 +2,7 @@ import uuid
 from django.db import models
 from django.contrib.auth.models import AbstractUser
 from user.manager import UserManager
+from news.models import News
 from django.utils.translation import gettext_lazy as _
 from django.utils import timezone
 
@@ -31,3 +32,10 @@ class UserDetail(models.Model):
 
     class Meta:
         db_table = 'user_detail'
+
+class UserBookmark(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='user')
+    news = models.ForeignKey(News, on_delete=models.CASCADE, related_name='news')
+
+    class Meta:
+        db_table = 'user_bookmark'

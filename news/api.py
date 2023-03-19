@@ -1,14 +1,18 @@
-from datetime import timedelta
-from django.utils import timezone
 from ninja.errors import HttpError
-from ninja_jwt.authentication import JWTAuth
+from ninja.responses import Response, resp_codes
+from ninja_jwt.authentication import JWTAuth, Any, HttpRequest, Type, AbstractUser, AnonymousUser
 from ninja_extra.shortcuts import get_object_or_exception
 from ninja import Router
 from news.schemas import NewsInSchema, NewsOutSchema, NewsChannelSchema, NewsCategorySchema, NewsEmail
 from news.models import NewsChannel, NewsCategory, News
+from user.models import UserBookmark
+from django.contrib.auth import get_user_model
 from django.core.mail.message import EmailMessage
 from elasticsearch import Elasticsearch
+from typing import Optional
 import os
+
+User = get_user_model()
 
 elastic_ip = os.getenv("ELASTIC_IP")
 
@@ -107,6 +111,14 @@ def search_data(start:int, content:str or int, category_id:int = None, only_chan
     page_number =  ((result['hits']['total']['value'] - 1)//5)
     return data, page_number
 
+def get_user_or_none(request):
+    try:
+        token = request.headers['Authorization'].split(" ")[1]
+        user_email = JWTAuth.jwt_authenticate(JWTAuth(),request=request,token=token)
+    except KeyError or IndexError:
+        user_email = None
+    return user_email
+
 
 router = Router()
 
@@ -114,13 +126,13 @@ router = Router()
 def create_channel(request, payload:NewsChannelSchema):
     for channel in payload.channels:
         NewsChannel.objects.create(channel_name=channel)
-    return {"msg" : "채널이 생성되었습니다."}
+    return Response({"msg" : "채널이 생성되었습니다."})
 
 @router.post("/category")
 def create_category(request, payload:NewsCategorySchema):
     for category in payload.categories:
         NewsCategory.objects.create(category_name=category)
-    return {"msg" : "카테고리가 생성되었습니다."}
+    return Response({"msg" : "카테고리가 생성되었습니다."})
 
 @router.post("")
 def create_news(request, payload:NewsInSchema):
@@ -128,10 +140,11 @@ def create_news(request, payload:NewsInSchema):
     channel = NewsChannel.objects.get(channel_name=dict_data.pop("channel"))
     category = NewsCategory.objects.get(category_name=dict_data.pop("category"))
     News.objects.create(**dict_data, channel=channel, category=category)
-    return {"msg" : "뉴스가 생성되었습니다."}
+    return Response({"msg" : "뉴스가 생성되었습니다."})
 
 @router.get("", response=NewsOutSchema)
 def read_news(request, page:int, channel:str = None, category:str = None, search:str = None):
+    user_email = get_user_or_none(request)
     if page == None:
         return HttpError(400, "페이지 넘버가 없습니다")
     if category != None and len(category) < 2:
@@ -154,6 +167,9 @@ def read_news(request, page:int, channel:str = None, category:str = None, search
         data_list, page_number = search_data(start=page, content=channel_obj.id, only_channel_data=True)
     else:
         data_list, page_number = search_data(start=page, content=search)
+    if user_email:
+        user_id = User.objects.get(email=user_email)
+        bookmark_obj = UserBookmark.objects.select_related('news','user').filter(user_id=user_id)
     res = {"newsItems" : []}
     for data in data_list:
         tem_dict = {}
@@ -169,16 +185,22 @@ def read_news(request, page:int, channel:str = None, category:str = None, search
         tem_dict['newsCategory'] = category_obj.category_name
         tem_dict['newsDate'] = data['_source']['created_time']
         tem_dict['isBookmarked'] = False
+        if user_email:
+            tem_dict['isBookmarked'] = bookmark_obj.filter(news_id=data['_source']['id']).exists()
         res["newsItems"].append(tem_dict)
     res["pageNumber"] = page_number
-    return res
+    return Response(res)
 
 @router.get("/today", response=NewsOutSchema)
 def read_news(request, page:int):
+    user_email = get_user_or_none(request)
     if page == None:
         return HttpError(400, '페이지 넘버가 없습니다')
     data_list, page_number = search_data(start=page, content=None)
     res = {"newsItems" : []}
+    if user_email:
+        user_id = User.objects.get(email=user_email)
+        bookmark_obj = UserBookmark.objects.select_related('news','user').filter(user_id=user_id)
     for data in data_list:
         tem_dict = {}
         tem_dict['newsId'] = data['_source']['id']
@@ -190,13 +212,30 @@ def read_news(request, page:int):
         category_obj = NewsCategory.objects.get(id=data['_source']['category_id'])
         tem_dict['newsCategory'] = category_obj.category_name
         tem_dict['newsDate'] = data['_source']['created_time']
+        if user_email:
+            tem_dict['isBookmarked'] = bookmark_obj.filter(news_id=data['_source']['id']).exists()
         tem_dict['isBookmarked'] = False
         res["newsItems"].append(tem_dict)
     res["pageNumber"] = page_number
-    return res
+    return Response(res)
 
 @router.post("/email")
 async def send_email(request, payload:NewsEmail):
     mail = EmailMessage('test subject','test content', to=payload.emails)
     mail.send()
-    return {"msg" : "메일 발송"}
+    return Response({"msg" : "메일 발송"})
+
+@router.post("/bookmark/{int:news_id}")
+def bookmark_news(request, news_id:int):
+    # 존재하지 않으면 에러 발생
+    
+    user = get_object_or_exception(User, email=request.user)
+    news = get_object_or_exception(News, id=news_id)
+    
+    bookmark = UserBookmark.objects.filter(user_id=user.id, news_id=news_id)
+    if bookmark:
+        bookmark.delete()
+        return Response({"msg" : "북마크를 해지하셨습니다"})
+    else:
+        UserBookmark.objects.create(user_id=user.id, news_id=news_id)
+        return Response({"msg" : "북마크를 설정하셨습니다"})

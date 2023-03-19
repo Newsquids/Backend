@@ -10,7 +10,7 @@ services:
       - |
         python manage.py makemigrations user news
         python manage.py migrate
-        python manage.py runserver 0.0.0.0:8000
+        gunicorn --bind 0.0.0.0:8000 config.wsgi:application
     volumes:
       - .:/usr/src/app/
     ports:
@@ -21,6 +21,12 @@ services:
       - POSTGRES_DB=${POSTGRES_DB}
       - POSTGRES_USER=${POSTGRES_USER}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - GOOGLE_USER_STATE=${GOOGLE_USER_STATE}
+      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
+      - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
+      - EMAIL_HOST_USER=${EMAIL_HOST_USER}
+      - EMAIL_HOST_PASSWORD=${EMAIL_HOST_PASSWORD}
+      - ELASTIC_IP=${ELASTIC_IP}
     networks:
       default_bridge:
         ipv4_address: 192.168.80.2
@@ -37,6 +43,9 @@ services:
       - POSTGRES_DB=${POSTGRES_DB}
       - POSTGRES_USER=${POSTGRES_USER}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - EMAIL_HOST_USER=${EMAIL_HOST_USER}
+      - EMAIL_HOST_PASSWORD=${EMAIL_HOST_PASSWORD}
+      - ELASTIC_IP=${ELASTIC_IP}
     volumes:
       - .:/usr/src/app/
     networks:
@@ -55,6 +64,9 @@ services:
       - POSTGRES_DB=${POSTGRES_DB}
       - POSTGRES_USER=${POSTGRES_USER}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - EMAIL_HOST_USER=${EMAIL_HOST_USER}
+      - EMAIL_HOST_PASSWORD=${EMAIL_HOST_PASSWORD}
+      - ELASTIC_IP=${ELASTIC_IP}
     volumes:
       - .:/usr/src/app/
     networks:
@@ -82,13 +94,37 @@ services:
     volumes:
       - ./postgresql/data:/var/lib/postgresql/data
     environment:
-      - DJANGO_ALLOWED_HOSTS=localhost 127.0.0.1
       - POSTGRES_DB=${POSTGRES_DB}
       - POSTGRES_USER=${POSTGRES_USER}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
     networks:
       default_bridge:
         ipv4_address: 192.168.80.6
+  nginx:
+    build: ./nginx
+    container_name: nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    restart: "on-failure"
+    volumes:
+      - ./certbot/conf:/etc/letsencrypt
+      - ./certbot/www:/var/www/certbot 
+    depends_on:
+      - django
+      - rabbitmq
+      - celery
+      - pgdb
+  certbot:
+    image: certbot/certbot
+    restart: unless-stopped
+    container_name: certbot
+    volumes: 
+        - ./certbot/conf:/etc/letsencrypt    #nginx컨테이너에 certbot컨테이너 연결
+        - ./certbot/www:/var/www/certbot
+    depends_on:
+        - nginx
+    entrypoint : "/bin/sh -c 'trap exit TERM; while :; do certbot renew; sleep 12h & wait $${!}; done;'"
 
 networks:
   default_bridge:
