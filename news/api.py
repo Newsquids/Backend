@@ -117,6 +117,8 @@ def get_user_or_none(request):
         user_email = JWTAuth.jwt_authenticate(JWTAuth(),request=request,token=token)
     except KeyError or IndexError:
         user_email = None
+    except IndexError:
+        user_email = None
     return user_email
 
 
