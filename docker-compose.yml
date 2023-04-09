@@ -1,0 +1,134 @@
+version: '3.8'
+
+services:
+  django:
+    build: .
+    container_name: django
+    command: 
+      - bash
+      - -c
+      - |
+        python manage.py makemigrations user news
+        python manage.py migrate
+        gunicorn --bind 0.0.0.0:8000 config.wsgi:application
+    volumes:
+      - .:/usr/src/app/
+    ports:
+      - "8000:8000"
+    environment:
+      - DEBUG=1
+      - DJANGO_SECRET_KEY=${DJANGO_SECRET_KEY}
+      - POSTGRES_DB=${POSTGRES_DB}
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - GOOGLE_USER_STATE=${GOOGLE_USER_STATE}
+      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
+      - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
+      - EMAIL_HOST_USER=${EMAIL_HOST_USER}
+      - EMAIL_HOST_PASSWORD=${EMAIL_HOST_PASSWORD}
+      - ELASTIC_IP=${ELASTIC_IP}
+    networks:
+      default_bridge:
+        ipv4_address: 192.168.80.2
+    depends_on:
+      - rabbitmq
+      - pgdb
+  celery:
+    build: .
+    container_name: celery-worker
+    command: celery -b rabbitmq -A config worker -l info
+    environment:
+      - DJANGO_SECRET_KEY=${DJANGO_SECRET_KEY}
+      - CELERY_BROKER_URL='amqp://localhost'
+      - POSTGRES_DB=${POSTGRES_DB}
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - EMAIL_HOST_USER=${EMAIL_HOST_USER}
+      - EMAIL_HOST_PASSWORD=${EMAIL_HOST_PASSWORD}
+      - ELASTIC_IP=${ELASTIC_IP}
+    volumes:
+      - .:/usr/src/app/
+    networks:
+      default_bridge:
+        ipv4_address: 192.168.80.3
+    depends_on:
+      - django
+      - rabbitmq
+  celery-beat:
+    build: .
+    container_name: celery-beat
+    command: celery -b rabbitmq -A config beat -l info
+    environment:
+      - DJANGO_SECRET_KEY=${DJANGO_SECRET_KEY}
+      - CELERY_BROKER_URL='amqp://localhost'
+      - POSTGRES_DB=${POSTGRES_DB}
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - EMAIL_HOST_USER=${EMAIL_HOST_USER}
+      - EMAIL_HOST_PASSWORD=${EMAIL_HOST_PASSWORD}
+      - ELASTIC_IP=${ELASTIC_IP}
+    volumes:
+      - .:/usr/src/app/
+    networks:
+      default_bridge:
+        ipv4_address: 192.168.80.4
+    depends_on:
+      - celery
+      - django
+      - rabbitmq
+  rabbitmq:
+    image: rabbitmq
+    container_name: rabbitmq
+    command: rabbitmq-server
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    networks:
+      default_bridge:
+        ipv4_address: 192.168.80.5
+  pgdb:
+    image: postgres
+    container_name: "pgdb"
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./postgresql/data:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_DB=${POSTGRES_DB}
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+    networks:
+      default_bridge:
+        ipv4_address: 192.168.80.6
+  nginx:
+    build: ./nginx
+    container_name: nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    restart: "on-failure"
+    volumes:
+      - ./certbot/conf:/etc/letsencrypt
+      - ./certbot/www:/var/www/certbot 
+    depends_on:
+      - django
+      - rabbitmq
+      - celery
+      - pgdb
+  certbot:
+    image: certbot/certbot
+    restart: unless-stopped
+    container_name: certbot
+    volumes: 
+        - ./certbot/conf:/etc/letsencrypt    #nginx컨테이너에 certbot컨테이너 연결
+        - ./certbot/www:/var/www/certbot
+    depends_on:
+        - nginx
+    entrypoint : "/bin/sh -c 'trap exit TERM; while :; do certbot renew; sleep 12h & wait $${!}; done;'"
+
+networks:
+  default_bridge:
+    ipam:
+      driver: default
+      config:
+        - subnet: 192.168.80.0/20
